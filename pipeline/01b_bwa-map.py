@@ -27,15 +27,11 @@ stderr = op.join(bwashdir,'bwa_%s.e' % tcount)
 
 samfile = r1out.replace("R1_trimmedandfiltered.fastq.gz","R1_R2_trimmedandfiltered.sam")
 text = '''#!/bin/bash
-#PBS -N bwa%s
-#PBS -V
-#PBS -S /bin/bash
-#PBS -l nodes=1:ppn=2
-#PBS -l procs=2
-#PBS -l walltime=0:10:00
-#PBS -l mem=600mb
-#PBS -o %s
-#PBS -e %s
+#SBATCH --account=def-saitken
+#SBATCH --job-name=bwa%s
+#SBATCH --export=all
+#SBATCH --time=0:10:00
+#SBATCH --mem=600mb
 
 bwa mem -t 2 -M %s %s %s > %s
 ''' % (str(tcount).zfill(3),
@@ -51,8 +47,10 @@ bwa mem -t 2 -M %s %s %s > %s
 qsubfile = op.join(bwashdir,'bwa_%s.sh' % str(random.randint(1,1000000000)) ) # to avoid 2+ files written at same time
 with open(qsubfile,'w') as o:
     o.write("%s" % text)
-os.system("qsub %s" % qsubfile)
-os.remove(qsubfile) # there will be way too many, n = readnumber
+os.system('cd %s' % op.dirname(qsubfile))
+cd(op.dirname(qsubfile)) # redundant to ^
+os.system("sbatch %s" % qsubfile)
+os.remove(qsubfile) # there will be way too many, n = n_reads
 
     
     

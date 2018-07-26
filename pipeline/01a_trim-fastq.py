@@ -4,7 +4,7 @@
 
 #####
 # changable
-lensh = 950 # number of sh files that can be sbatched/qsubbed - for sbatch, .sh file options should be changed
+lensh = 950 # number of sh files that can be sbatched
 #####
 
 #####
@@ -125,13 +125,11 @@ python 01b_bwa-map.py %s %s %s %s %s
     if fcount == ceil or tcount == len(seq_pairs):
         shz = str(shcount).zfill(3)
         header = '''#!/bin/bash
-#PBS -N trim%s
-#PBS -V
-#PBS -S /bin/bash
-#PBS -l nodes=1:ppn=1
-#PBS -l procs=1
-#PBS -l walltime=0:10:00
-#PBS -l mem=600mb
+#SBATCH --account=def-saitken
+#SBATCH --job-name=trim%s
+#SBATCH --export=all
+#SBATCH --time=0:10:00
+#SBATCH --mem=600mb
 ''' % (shz)
         text = header + text
         filE = op.join(shtrimDIR,'trim_%s.sh' % str(shcount).zfill(3))
@@ -143,7 +141,9 @@ python 01b_bwa-map.py %s %s %s %s %s
 
 # qsub the files
 shs = fs(shtrimDIR)
+os.system('cd %s' % shs)
+cd(shs) # just in case os.system(cd) doesn't work, we want outfiles in same directory as sh files
 for f in shs:
 #     !qsub $f # jupyter es el mejor
-    os.system('qsub %s' % f)
+    os.system('sbatch %s' % f)
 #####
