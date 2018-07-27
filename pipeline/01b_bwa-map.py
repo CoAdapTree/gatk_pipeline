@@ -10,13 +10,10 @@
 import sys 
 import os
 import random
+from os import path as op
 
-
-ref    = sys.argv[1]
-r1out  = sys.argv[2]
-r2out  = sys.argv[3]
-shdir  = sys.argv[4]
-tcount = sys.argv[5]
+# get argument inputs
+thisfile,ref,r1out,r2out,shdir,tcount = sys.argv
 
 # create a dir for stdout and stderr
 bwashdir = op.join(shdir,'bwa_shfiles')
@@ -25,18 +22,26 @@ if not op.exists(bwashdir):
 stdout = op.join(bwashdir,'bwa_%s.o' % tcount)
 stderr = op.join(bwashdir,'bwa_%s.e' % tcount)
 
-samfile = r1out.replace("R1_trimmedandfiltered.fastq.gz","R1_R2_trimmedandfiltered.sam")
+print 'basename(r1out) =',op.basename(r1out)
+sam = op.basename(r1out).replace("R1_trimmed.fastq","R1_R2_trimmed.sam")
+print 'sam =',sam
+samdir = op.join(op.dirname(shdir),'samfiles')
+print 'samdir =',samdir
+samfile = op.join(samdir,sam)
+print 'samfile =',samfile
 text = '''#!/bin/bash
 #SBATCH --account=def-saitken
+#SBATCH --cpus-per-task=16
 #SBATCH --job-name=bwa%s
 #SBATCH --export=all
-#SBATCH --time=0:10:00
-#SBATCH --mem=600mb
+#SBATCH --time=01:00:00
+#SBATCH --mem=50000mb
+#SBATCH --output=%%x-%%j.out # needs two %% because of text replace in python
 
-bwa mem -t 2 -M %s %s %s > %s
+source $HOME/.bashrc
+
+bwa mem -t 16 -M %s %s %s > %s
 ''' % (str(tcount).zfill(3),
-       stdout,
-       stderr,
        ref,
        r1out,
        r2out,
@@ -48,7 +53,7 @@ qsubfile = op.join(bwashdir,'bwa_%s.sh' % str(random.randint(1,1000000000)) ) # 
 with open(qsubfile,'w') as o:
     o.write("%s" % text)
 os.system('cd %s' % op.dirname(qsubfile))
-cd(op.dirname(qsubfile)) # redundant to ^
+os.chdir(op.dirname(qsubfile)) # redundant to ^
 os.system("sbatch %s" % qsubfile)
 os.remove(qsubfile) # there will be way too many, n = n_reads
 
