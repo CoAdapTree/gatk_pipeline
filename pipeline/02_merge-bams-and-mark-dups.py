@@ -40,6 +40,8 @@ text = '''#!/bin/bash
 #SBATCH --mem=50000mb
 #SBATCH --output=%%x-%%j.out 
 
+source $HOME/.bashrc
+
 # merge and index
 samtools merge -@ 32 -f %s %s
 samtools index %s
