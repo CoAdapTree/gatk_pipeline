@@ -45,7 +45,7 @@ samtools merge -@ 32 -f %s %s
 samtools index %s
 
 # remove dups
-java -Xmx2g -jar MarkDuplicates.jar I=%s O=%s M=%s VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=true
+picard MarkDuplicates.jar I=%s O=%s M=%s VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=true
 
 # create read groups?
 ''' % (mout, " ".join([x for x in mfiles]),
