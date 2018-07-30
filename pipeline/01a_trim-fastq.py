@@ -58,7 +58,7 @@ mfile = op.join(fqdir,'messages/msgs.txt')
         
 # get the fastq.gz files
 os.chdir(fqdir)
-gzfiles = [op.abspath(f) for f in fs(fqdir) if 'R1' in f]
+gzfiles = [f for f in fs(fqdir) if 'R1' in f]
 lgz     = len(gzfiles)
 # !echo 'found '$lgz' gz files in '$fqdir >> $fqdir'/messages/msgs.txt' # only works in jupyter notebooks :'(
 # instead of ^, do (lame/boring):
