@@ -1,22 +1,29 @@
-from __future__ import division
 ####
 # assumes fastq.gz files
 ###
 
-#####
+###
 # execution:
 # python 01a_trim-fastq.py /path/to/fastq.gz-files/ /path/to/ref.fa 
-#####
+###
 
-#####
-# changable
-lensh = 950 # number of sh files that can be sbatched
-#####
-
-#####
+###
 # imports
+from __future__ import division
 import sys
 from os import path as op
+from os import listdir as ls
+def fs(DIR):
+    return sorted([op.join(DIR,f) for f in ls(DIR)])
+os.system('source $HOME/.bashrc')
+###
+
+###
+# changable
+lensh = 950 # number of sh files that can be sbatched
+###
+
+
 
 # args
 fqdir   = sys.argv[1] # path to raw fastq files
@@ -29,14 +36,9 @@ for i,arg in enumerate([ref,fqdir]):
         print "The %s'th argument does not exist in the specified path" % str(i)
         sys.exit(1)
 
-# more imports and aliases
-pipedir = op.dirname(op.abspath(sys.argv[0]))         # this is where the git repo (pipeline) is pulled
-try:
-    imp = open(op.join(pipedir,'pythonimports.py')).read()
-except IOError as e:
-    print "Error: couldn't find pythonimports.py file in %s. Check implementation of directory tree." % pipedir
-    sys.exit(1)
-exec(imp)
+# more imports and aliases (don't think I need this any more
+pipedir = op.dirname(op.abspath(sys.argv[0]))         # this is where the git repo (pipeline) is cloned
+
 
 # make some dirs
 msgdir    = op.join(fqdir,'messages')
@@ -55,7 +57,7 @@ mfile = op.join(fqdir,'messages/msgs.txt')
 ###
         
 # get the fastq.gz files
-cd(fqdir)
+os.chdir(fqdir)
 gzfiles = [op.abspath(f) for f in fs(fqdir) if 'R1' in f]
 lgz     = len(gzfiles)
 # !echo 'found '$lgz' gz files in '$fqdir >> $fqdir'/messages/msgs.txt' # only works in jupyter notebooks :'(
@@ -120,12 +122,12 @@ python 01b_bwa-map.py %s %s %s %s %s
 #SBATCH --account=def-saitken
 #SBATCH --job-name=trim%s
 #SBATCH --export=all
-#SBATCH --time=01:00:00
+#SBATCH --time=00:59:00
 #SBATCH --mem=1000mb
 #SBATCH --cpus-per-task=16
 ''' % (shz)
         text = header + text
-        filE = op.join(shtrimDIR,'trim_%s.sh' % str(shcount).zfill(3))
+        filE = op.join(shtrimDIR,'trim_%s.sh' % shz)
         with open(filE,'w') as o:
             o.write("%s" % text)
         shcount += 1
@@ -134,9 +136,8 @@ python 01b_bwa-map.py %s %s %s %s %s
 
 # qsub the files
 shs = fs(shtrimDIR)
-os.system('cd %s' % shtrimDIR)
-cd(shtrimDIR) # just in case os.system(cd) doesn't work, we want outfiles in same directory as sh files
+os.chdir(shtrimDIR) # want sbatch outfiles in same folder as sh file
 for f in shs:
-#     !qsub $f # jupyter es el mejor
+#     !sbatch $f # jupyter es el mejor
     os.system('sbatch %s' % f)
 #####
