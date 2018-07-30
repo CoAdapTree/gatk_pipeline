@@ -1,5 +1,5 @@
 # coadaptree
-=====
+-----
 ## Assumed requirements
 1. install an anaconda (not miniconda) environment with python 2.7 (eg: `conda create -n py27 python=2.7`)
     1. export anaconda path in $HOME/.bashrc (this should automatically be done when installing anaconda)
