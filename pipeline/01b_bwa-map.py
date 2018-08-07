@@ -11,6 +11,7 @@ import sys
 import os
 import random
 from os import path as op
+import pickle
 
 # get argument inputs
 thisfile,ref,r1out,r2out,shdir,tcount = sys.argv
@@ -38,24 +39,30 @@ sortfile  = op.join(sortdir,sort)
 filt      = op.basename(sortfile).replace('.bam','_filtered.bam')
 filtdir   = op.join(fqdir,'filtered_indexed_sorted_bamfiles')
 filtfile  = op.join(filtdir,filt)
-
 for d in [bamdir,samdir,sortdir,filtdir,bwashdir]:
     if not op.exists(d):
         os.makedirs(d)
 
+# get RG info
+rg = pickle.load(open(op.join(fqdir,'rginfo.pkl'),'r'))
+for s in rg:
+    if s in r1out:
+        samp = s
+        break
+        
 # send it off
 text = '''#!/bin/bash
 #SBATCH --account=def-saitken
 #SBATCH --cpus-per-task=32
 #SBATCH --job-name=bwa%s
 #SBATCH --export=all
-#SBATCH --time=03:00:00
+#SBATCH --time=11:59:00
 #SBATCH --mem=50000mb
 #SBATCH --output=%%x-%%j.out # needs two %% because of text replace in python
 
 source $HOME/.bashrc
 
-bwa mem -t 32 -M %s %s %s > %s
+bwa mem -t 32 -M -R "%s" %s %s %s > %s
 samtools view -@ 32 -Sb %s > %s
 samtools sort -@ 32 %s > %s
 samtools index %s
@@ -64,7 +71,7 @@ samtools index %s
 samtools view -@ 32 -q 20 -f 0x0002 -F 0x0004 -F 0x0008 -b %s > %s
 samtools index %s
 ''' % (str(tcount).zfill(3),
-       ref,  r1out,  r2out,  samfile,
+       rg[samp], ref,  r1out,  r2out,  samfile,
        samfile,  bamfile,
        bamfile,  sortfile,
        sortfile,

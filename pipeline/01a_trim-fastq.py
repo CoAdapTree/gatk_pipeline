@@ -32,7 +32,7 @@ for i,arg in enumerate([ref,fqdir]):
         print "The %s'th argument does not exist in the specified path" % str(i)
         sys.exit(1)
 
-# more imports and aliases (don't think I need this any more
+# more imports and aliases (don't think I need this any more)
 pipedir = op.dirname(op.abspath(sys.argv[0]))         # this is where the git repo (pipeline) is cloned
 
 
@@ -118,7 +118,7 @@ python 01b_bwa-map.py %s %s %s %s %s
 #SBATCH --account=def-saitken
 #SBATCH --job-name=trim%s
 #SBATCH --export=all
-#SBATCH --time=00:59:00
+#SBATCH --time=11:59:00
 #SBATCH --mem=1000mb
 #SBATCH --cpus-per-task=16
 ''' % (shz)
