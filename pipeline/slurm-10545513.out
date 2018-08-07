@@ -1,0 +1,118 @@
+sbatch: error: This does not look like a batch script.  The first
+sbatch: error: line must start with #! followed by the path to an interpreter.
+sbatch: error: For instance: #!/bin/sh
+sbatch: error: This does not look like a batch script.  The first
+sbatch: error: line must start with #! followed by the path to an interpreter.
+sbatch: error: For instance: #!/bin/sh
+sbatch: error: This does not look like a batch script.  The first
+sbatch: error: line must start with #! followed by the path to an interpreter.
+sbatch: error: For instance: #!/bin/sh
+sbatch: error: This does not look like a batch script.  The first
+sbatch: error: line must start with #! followed by the path to an interpreter.
+sbatch: error: For instance: #!/bin/sh
+sbatch: error: This does not look like a batch script.  The first
+sbatch: error: line must start with #! followed by the path to an interpreter.
+sbatch: error: For instance: #!/bin/sh
+sbatch: error: This does not look like a batch script.  The first
+sbatch: error: line must start with #! followed by the path to an interpreter.
+sbatch: error: For instance: #!/bin/sh
+sbatch: error: This does not look like a batch script.  The first
+sbatch: error: line must start with #! followed by the path to an interpreter.
+sbatch: error: For instance: #!/bin/sh
+sbatch: error: This does not look like a batch script.  The first
+sbatch: error: line must start with #! followed by the path to an interpreter.
+sbatch: error: For instance: #!/bin/sh
+sbatch: error: This does not look like a batch script.  The first
+sbatch: error: line must start with #! followed by the path to an interpreter.
+sbatch: error: For instance: #!/bin/sh
+sbatch: error: This does not look like a batch script.  The first
+sbatch: error: line must start with #! followed by the path to an interpreter.
+sbatch: error: For instance: #!/bin/sh
+sbatch: error: This does not look like a batch script.  The first
+sbatch: error: line must start with #! followed by the path to an interpreter.
+sbatch: error: For instance: #!/bin/sh
+Submitted batch job 10545522
+Submitted batch job 10545525
+Submitted batch job 10545529
+Submitted batch job 10545534
+Submitted batch job 10545537
+Submitted batch job 10545540
+Submitted batch job 10545541
+Submitted batch job 10545544
+Submitted batch job 10545547
+Submitted batch job 10545550
+Submitted batch job 10545552
+Submitted batch job 10545554
+Submitted batch job 10545556
+Submitted batch job 10545557
+Submitted batch job 10545560
+Submitted batch job 10545562
+Submitted batch job 10545563
+Submitted batch job 10545564
+Submitted batch job 10545566
+Submitted batch job 10545569
+Submitted batch job 10545572
+Submitted batch job 10545586
+Submitted batch job 10545595
+Submitted batch job 10545598
+Submitted batch job 10545600
+Submitted batch job 10545602
+Submitted batch job 10545606
+Submitted batch job 10545608
+Submitted batch job 10545610
+Submitted batch job 10545614
+Submitted batch job 10545617
+Submitted batch job 10545619
+Submitted batch job 10545621
+Submitted batch job 10545624
+Submitted batch job 10545625
+Submitted batch job 10545631
+Submitted batch job 10545632
+Submitted batch job 10545634
+Submitted batch job 10545635
+Submitted batch job 10545636
+Submitted batch job 10545638
+Submitted batch job 10545640
+Submitted batch job 10545642
+Submitted batch job 10545644
+Submitted batch job 10545647
+Submitted batch job 10545650
+Submitted batch job 10545652
+Submitted batch job 10545654
+Submitted batch job 10545659
+Submitted batch job 10545662
+Submitted batch job 10545666
+Submitted batch job 10545668
+Submitted batch job 10545670
+Submitted batch job 10545672
+Submitted batch job 10545674
+Submitted batch job 10545677
+Submitted batch job 10545679
+Submitted batch job 10545682
+Submitted batch job 10545685
+Submitted batch job 10545689
+Submitted batch job 10545693
+Submitted batch job 10545697
+Submitted batch job 10545699
+Submitted batch job 10545700
+Submitted batch job 10545701
+Submitted batch job 10545704
+Submitted batch job 10545707
+Submitted batch job 10545710
+Submitted batch job 10545713
+Submitted batch job 10545720
+Submitted batch job 10545726
+Submitted batch job 10545732
+Submitted batch job 10545735
+Submitted batch job 10545739
+Submitted batch job 10545742
+Submitted batch job 10545743
+Submitted batch job 10545748
+Submitted batch job 10545751
+Submitted batch job 10545753
+Submitted batch job 10545758
+Submitted batch job 10545763
+Submitted batch job 10545767
+Submitted batch job 10545769
+found 85 R1 fastq.gz files in /scratch/lindb/data/
+found 83 R1/R2 seq pairs

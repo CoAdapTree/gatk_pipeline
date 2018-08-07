@@ -2,7 +2,7 @@
 #SBATCH --account=def-saitken
 #SBATCH --job-name=initiatepipe
 #SBATCH --export=all
-#SBATCH --time=00:05:00
+#SBATCH --time=00:59:00
 #SBATCH --mem=500mb
 #SBATCH --cpus-per-task=1
 

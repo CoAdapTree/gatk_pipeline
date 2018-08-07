@@ -68,7 +68,7 @@ samtools index %s
        samfile,  bamfile,
        bamfile,  sortfile,
        sortfile,
-       sortfile, filtfile
+       sortfile, filtfile,
        filtfile
       )
 
@@ -86,3 +86,4 @@ os.system("sbatch %s" % qsubfile)
     
     
     
+

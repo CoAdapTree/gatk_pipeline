@@ -11,6 +11,7 @@
 # imports
 from __future__ import division
 import sys
+import os
 from os import path as op
 from os import listdir as ls
 def fs(DIR):
@@ -18,16 +19,11 @@ def fs(DIR):
 os.system('source $HOME/.bashrc')
 ###
 
-###
-# changable
-lensh = 950 # number of sh files that can be sbatched
-###
-
-
 
 # args
 fqdir   = sys.argv[1] # path to raw fastq files
 ref     = sys.argv[2] # path to reference genome used for mapping (/home/lindb/scratch/ptaeda.v1.01.reduced.pseudo.fasta)
+lensh   = sys.argv[3]
 for i,arg in enumerate([ref,fqdir]):
     # make sure the args exist
     try:
@@ -100,7 +96,7 @@ for s in seq_pairs:
     r1out = op.join(trimDIR,op.basename(r1).replace('.fastq.gz','_trimmed.fastq'))
     r2    = op.abspath(s[1])
     r2out = op.join(trimDIR,op.basename(r2).replace('.fastq.gz','_trimmed.fastq'))
-    cmd   = '''fastp -i %s -o %s -I %s -O %s -g --cut_window_size 5 --cut_mean_quality 30 --qualified_quality_phred 30 --unqualified_percent_limit 20 --n_base_limit 5 --length_required 75 -h %s.html --cut_by_quality3 --thread 16 --json %s.json
+    cmd   = '''fastp -i %s -o %s -I %s -O %s -g --cut_window_size 5 --cut_mean_quality 30 --qualified_quality_phred 30 --unqualified_percent_limit 20 --n_base_limit 5 --length_required 75 -h %s.html --cut_by_quality3 --thread 16 --json %s.json --adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
 
 
 cd $HOME/pipeline
