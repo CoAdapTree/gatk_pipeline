@@ -4,7 +4,7 @@
 
 ###
 # execution:
-# python 01a_trim-fastq.py /path/to/fastq.gz-files/ /path/to/ref.fa 
+# python 01a_trim-fastq.py /path/to/fastq.gz-files/ /path/to/ref.fa <int-number-of-shfiles>
 ###
 
 ###
