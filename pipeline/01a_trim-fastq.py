@@ -14,6 +14,7 @@ import sys
 import os
 from os import path as op
 from os import listdir as ls
+import math
 def fs(DIR):
     return sorted([op.join(DIR,f) for f in ls(DIR)])
 os.system('source $HOME/.bashrc')
@@ -23,7 +24,8 @@ os.system('source $HOME/.bashrc')
 # args
 fqdir   = sys.argv[1] # path to raw fastq files
 ref     = sys.argv[2] # path to reference genome used for mapping (/home/lindb/scratch/ptaeda.v1.01.reduced.pseudo.fasta)
-lensh   = sys.argv[3]
+lensh   = int(sys.argv[3])
+print "lensh =",lensh
 for i,arg in enumerate([ref,fqdir]):
     # make sure the args exist
     try:
@@ -77,7 +79,9 @@ for f in gzfiles:
         with open(mfile,'a') as o:
             o.write("%s\n" % text)
 print "found %s R1/R2 seq pairs" % str(len(seq_pairs))
-
+print "type(len(seq_pairs)) =",type(len(seq_pairs))
+print "type(lensh) =",type(lensh)
+print "len(seq_pairs) <= lensh?", len(seq_pairs) <= lensh
 # determine how many commands per sh file
 if len(seq_pairs) <= lensh:
     # one command per sh file
@@ -85,7 +89,8 @@ if len(seq_pairs) <= lensh:
 else:
     # multiple commands per sh file
     ceil = math.ceil(len(seq_pairs)/lensh)
-
+print "ceil =",ceil
+    
 shcount = 0
 fcount  = 0
 tcount  = 0
@@ -93,21 +98,34 @@ text    = ''''''
 for s in seq_pairs:
 #     print s
     r1    = op.abspath(s[0])
-    r1out = op.join(trimDIR,op.basename(r1).replace('.fastq.gz','_trimmed.fastq'))
+    if r1.endswith("fastq"):
+        r1out = op.join(trimDIR,op.basename(r1).replace('.fastq','_trimmed.fastq'))
+    else:
+        r1out = op.join(trimDIR,op.basename(r1).replace('.fastq.gz','_trimmed.fastq'))
     r2    = op.abspath(s[1])
-    r2out = op.join(trimDIR,op.basename(r2).replace('.fastq.gz','_trimmed.fastq'))
-    cmd   = '''fastp -i %s -o %s -I %s -O %s -g --cut_window_size 5 --cut_mean_quality 30 --qualified_quality_phred 30 --unqualified_percent_limit 20 --n_base_limit 5 --length_required 75 -h %s.html --cut_by_quality3 --thread 16 --json %s.json --adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
+    if r2.endswith("fastq"):
+        r2out = op.join(trimDIR,op.basename(r2).replace('.fastq','_trimmed.fastq'))
+    else:
+        r2out = op.join(trimDIR,op.basename(r2).replace('.fastq.gz','_trimmed.fastq'))
+    html = r1out.replace("R1","").replace(".fastq","_R1_R2_stats")
+    json = r1out.replace("R1","").replace(".fastq","_R1_R2")
+    cmd  = '''fastp -i %s -o %s -I %s -O %s -g --cut_window_size 5 --cut_mean_quality 30 --qualified_quality_phred 30 --unqualified_percent_limit 20 --n_base_limit 5 --length_required 75 -h %s.html --cut_by_quality3 --thread 16 --json %s.json --adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
 
 
 cd $HOME/pipeline
 # once finished, map using bwa mem 
 python 01b_bwa-map.py %s %s %s %s %s           
-''' % (r1,  r1out,
-       r2,  r2out,
-       r1out.replace("R1_trimmed.fastq","R1_R2_trimmed_stats"),
-       r1out.replace("R1_trimmed.fastq","R1_R2_trimmed"),
-       ref,  r1out,  r2out,  shdir,  str(tcount).zfill(3)
+''' % (r1  , r1out,
+       r2  , r2out,
+       html, json ,
+       ref , r1out,  r2out,  shdir,  str(tcount).zfill(3)
       )
+# (r1,  r1out,
+#        r2,  r2out,
+#        r1out.replace("R1_trimmed.fastq","R1_R2_trimmed_stats"),
+#        r1out.replace("R1_trimmed.fastq","R1_R2_trimmed"),
+#        ref,  r1out,  r2out,  shdir,  str(tcount).zfill(3)
+#       )
     text = text + cmd
     
     fcount += 1
@@ -118,7 +136,7 @@ python 01b_bwa-map.py %s %s %s %s %s
 #SBATCH --account=def-saitken
 #SBATCH --job-name=trim%s
 #SBATCH --export=all
-#SBATCH --time=11:59:00
+#SBATCH --time=02:59:00
 #SBATCH --mem=1000mb
 #SBATCH --cpus-per-task=16
 ''' % (shz)
@@ -129,11 +147,12 @@ python 01b_bwa-map.py %s %s %s %s %s
         shcount += 1
         fcount = 0
         text = ''''''
-
+print 'shcount =',shcount
+        
 # qsub the files
 shs = fs(shtrimDIR)
 os.chdir(shtrimDIR) # want sbatch outfiles in same folder as sh file
-for f in shs:
+#for f in shs:
 #     !sbatch $f # jupyter es el mejor
-    os.system('sbatch %s' % f)
+#    os.system('sbatch %s' % f)
 #####

@@ -51,3 +51,7 @@ def pkldump(obj,f):
         pickle.dump(obj,o,protocol=pickle.HIGHEST_PROTOCOL)
 def head(df):
     return df.head()
+def sbatch(DIR):
+    os.chdir(DIR)
+    for f in fs(DIR):
+        !sbatch $f

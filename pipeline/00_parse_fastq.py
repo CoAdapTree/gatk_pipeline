@@ -29,9 +29,9 @@ record_iter = SeqIO.parse(gzip.open(f),"fastq")
 batches = batch_iterator(record_iter, 10000)
 for i, batch in enumerate(batches):
     print 'started'
-    f = op.basename(f).replace("fastq.gz","")
-    filename = op.join(pooldir,"%s_%s.fastq" % (f,
-                                                 str(i).zfill(4)))
+    num = str(i).zfill(4)
+    f = op.basename(f).replace(".fastq.gz","")
+    filename = op.join(pooldir,"%sparse%sparse.fastq" % (f,num))
     with open(filename, "w") as handle:
         count = SeqIO.write(batch, handle, "fastq")
     print("Wrote %i records to %s" % (count, filename))
