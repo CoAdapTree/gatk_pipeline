@@ -109,7 +109,8 @@ for s in seq_pairs:
         r2out = op.join(trimDIR,op.basename(r2).replace('.fastq.gz','_trimmed.fastq'))
     html = r1out.replace("R1","").replace(".fastq","_R1_R2_stats")
     json = r1out.replace("R1","").replace(".fastq","_R1_R2")
-    cmd  = '''fastp -i %s -o %s -I %s -O %s -g --cut_window_size 5 --cut_mean_quality 30 --qualified_quality_phred 30 --unqualified_percent_limit 20 --n_base_limit 5 --length_required 75 -h %s.html --cut_by_quality3 --thread 16 --json %s.json --adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
+    logfile = r1out.replace("R1","").replace(".fastq","_R1_R2_stats.log")
+    cmd  = '''fastp -i %s -o %s -I %s -O %s -g --cut_window_size 5 --cut_mean_quality 30 --qualified_quality_phred 30 --unqualified_percent_limit 20 --n_base_limit 5 --length_required 75 -h %s.html --cut_by_quality3 --thread 16 --json %s.json --adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT > %s
 
 
 cd $HOME/pipeline
@@ -117,8 +118,8 @@ cd $HOME/pipeline
 python 01b_bwa-map.py %s %s %s %s %s           
 ''' % (r1  , r1out,
        r2  , r2out,
-       html, json ,
-       ref , r1out,  r2out,  shdir,  str(tcount).zfill(3)
+       html, json ,  logfile,
+       ref , r1out,  r2out  , shdir, str(tcount).zfill(3)
       )
 # (r1,  r1out,
 #        r2,  r2out,
@@ -136,7 +137,7 @@ python 01b_bwa-map.py %s %s %s %s %s
 #SBATCH --account=def-saitken
 #SBATCH --job-name=trim%s
 #SBATCH --export=all
-#SBATCH --time=02:59:00
+#SBATCH --time=11:59:00
 #SBATCH --mem=1000mb
 #SBATCH --cpus-per-task=16
 ''' % (shz)
@@ -152,7 +153,7 @@ print 'shcount =',shcount
 # qsub the files
 shs = fs(shtrimDIR)
 os.chdir(shtrimDIR) # want sbatch outfiles in same folder as sh file
-#for f in shs:
+for f in shs:
 #     !sbatch $f # jupyter es el mejor
-#    os.system('sbatch %s' % f)
+    os.system('sbatch %s' % f)
 #####
