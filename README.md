@@ -13,6 +13,6 @@
 -----
 
 ## Using the pipeline
-- To kick off the pipeline, first source your bashrc (`source ~/.bashrc`), `cd ~/pipeline`, and run `01a_trim-fastq.py` from the home node, and it will run the rest of the preprocessing pipeline automatically by serially sbatching jobs (through 01b). I can implement a script within 01a or 01b to check to see when all of the final bam files are created at the end of 01b.py which could then kick off the 02.py script automatically, but I haven't done this yet (as of now we'd have to kick off the 02.py script once all bam files are ready to be merged).
+- To kick off the pipeline, first source your bashrc (`source ~/.bashrc`), `cd ~/pipeline`, and run `01a_trim-fastq.py` from the home node, and it will run the rest of the preprocessing pipeline automatically by serially sbatching jobs (through 01b). See example datatable.txt file needed for 00_start-pipeline.py.
 
-`(py27) [user@server pipelinefolder]$ python 01a_trim-fastq.py /path/to/data /path/to/ref.fa <int-number-of-shfiles>`
+`(py27) [user@server pipelinefolder]$ python 00_start-pipeline.py /path/to/folder/with/fastq.gzfiles/`
