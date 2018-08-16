@@ -4,7 +4,7 @@
 
 ###
 # execution:
-# python 01a_trim-fastq.py /path/to/fastq.gz-files/ /path/to/ref.fa <int-number-of-shfiles>
+# python 01a_trim-fastq.py /path/to/fastq.gz-files/ /path/to/ref.fa 
 ###
 
 ###
@@ -24,8 +24,7 @@ os.system('source $HOME/.bashrc')
 # args
 fqdir   = sys.argv[1] # path to raw fastq files
 ref     = sys.argv[2] # path to reference genome used for mapping (/home/lindb/scratch/ptaeda.v1.01.reduced.pseudo.fasta)
-lensh   = int(sys.argv[3])
-print "lensh =",lensh
+lensh   = 950
 for i,arg in enumerate([ref,fqdir]):
     # make sure the args exist
     try:
@@ -34,8 +33,8 @@ for i,arg in enumerate([ref,fqdir]):
         print "The %s'th argument does not exist in the specified path" % str(i)
         sys.exit(1)
 
-# more imports and aliases (don't think I need this any more)
-pipedir = op.dirname(op.abspath(sys.argv[0]))         # this is where the git repo (pipeline) is cloned
+# # more imports and aliases (don't think I need this any more)
+# pipedir = op.dirname(op.abspath(sys.argv[0]))         # this is where the git repo (pipeline) is cloned
 
 
 # make some dirs
@@ -101,11 +100,13 @@ for s in seq_pairs:
     if r1.endswith("fastq"):
         r1out = op.join(trimDIR,op.basename(r1).replace('.fastq','_trimmed.fastq'))
     else:
+        assert r1.endswith('fastq.gz')
         r1out = op.join(trimDIR,op.basename(r1).replace('.fastq.gz','_trimmed.fastq'))
     r2    = op.abspath(s[1])
     if r2.endswith("fastq"):
         r2out = op.join(trimDIR,op.basename(r2).replace('.fastq','_trimmed.fastq'))
     else:
+        assert r2.endswith('fastq.gz')
         r2out = op.join(trimDIR,op.basename(r2).replace('.fastq.gz','_trimmed.fastq'))
     html = r1out.replace("R1","").replace(".fastq","_R1_R2_stats")
     json = r1out.replace("R1","").replace(".fastq","_R1_R2")
@@ -115,7 +116,7 @@ for s in seq_pairs:
 
 cd $HOME/pipeline
 # once finished, map using bwa mem 
-python 01b_bwa-map.py %s %s %s %s %s           
+python 01b_bwa-map_rginfo.py %s %s %s %s %s           
 ''' % (r1  , r1out,
        r2  , r2out,
        html, json ,  logfile,
@@ -137,10 +138,14 @@ python 01b_bwa-map.py %s %s %s %s %s
 #SBATCH --account=def-saitken
 #SBATCH --job-name=trim%s
 #SBATCH --export=all
-#SBATCH --time=11:59:00
-#SBATCH --mem=1000mb
+#SBATCH --time=02:59:00
+#SBATCH --mem=5000mb
 #SBATCH --cpus-per-task=16
-''' % (shz)
+#SBATCH --output=trim%s_%%j.out
+#SBATCH --mail-user=lindb@vcu.edu
+#SBATCH --mail-type=FAIL
+
+''' % (shz,shz)
         text = header + text
         filE = op.join(shtrimDIR,'trim_%s.sh' % shz)
         with open(filE,'w') as o:
@@ -154,6 +159,6 @@ print 'shcount =',shcount
 shs = fs(shtrimDIR)
 os.chdir(shtrimDIR) # want sbatch outfiles in same folder as sh file
 for f in shs:
-#     !sbatch $f # jupyter es el mejor
+##     !sbatch $f # jupyter es el mejor
     os.system('sbatch %s' % f)
 #####

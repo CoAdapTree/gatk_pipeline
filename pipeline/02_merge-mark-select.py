@@ -6,24 +6,29 @@ def fs (DIR):
     return (sorted([op.join(DIR,f) for f in ls(DIR)]))
 
 ###
-# execution: 02_merge-bams-and-mark-dups.py /path/to/fastq.gz-folder/ ploidy<int>
+# execution: 02_merge-bams-and-mark-dups.py /path/to/fastq.gz-folder/ 
 ###
 
-thisfile, fqdir, ref, ploidy = sys.argv
+###
+# when using samtools from anaconda, change default_jvm_mem_opts to "-Xms512m -Xmx4g" in <which picard> file
+###
+
+thisfile, fqdir, ref = sys.argv
 
 # create dirs
-mergedir = op.join(fqdir,'filtered_indexed_sorted_bamfiles')
+mergedir = op.join(fqdir,'rg_filtered_indexed_sorted_bamfiles')
 shdir    = op.join(fqdir,'shfiles')
 for d in [mergedir,shdir]:
     assert op.exists(d)
-mergeoutdir = op.join(fqdir,'merged_filtered_indexed_sorted_bamfiles')
-dupdir      = op.join(fqdir,'dedup_merged_filtered_indexed_sorted_bamfiles')
+mergeoutdir = op.join(fqdir,'merged_rg_filtered_indexed_sorted_bamfiles')
+dupdir      = op.join(fqdir,'dedup_merged_rg_filtered_indexed_sorted_bamfiles')
 mshdir      = op.join(shdir,'merge_shfiles')
 gatkdir     = op.join(fqdir,'gatkdir')
 vcfdir    = op.join(fqdir,'vcfs')
 for d in [mergeoutdir,dupdir,mshdir,gatkdir,vcfdir]:
     if not op.exists(d):
         os.makedirs(d)
+
     
 # create filenames
 mfiles    = [f for f in fs(mergedir) if f.endswith('bam')] # bam files to be merged
@@ -37,13 +42,18 @@ rawvcf    = op.join(vcfdir,'raw_%s.vcf' % out)
 snpvcf    = op.join(vcfdir,'snps_%s.vcf' % out)
 indelvcf  = op.join(vcfdir,'indel_%s.vcf' % out)
 
+#get ploidy and rginfo
+PLOIDY = pickle.load(open(op.join(fqdir,'ploidy.pkl')))
+ploidy = int(PLOIDY[op.basename(fqdir)])
+rginfo = pickle.load(open(op.join(fqdir,'rginfo.pkl')))
+
 # run it
 text = '''#!/bin/bash
 #SBATCH --account=def-saitken
 #SBATCH --cpus-per-task=32
 #SBATCH --job-name=mergebams
 #SBATCH --export=all
-#SBATCH --time=03:00:00
+#SBATCH --time=11:59:00
 #SBATCH --mem=500000mb
 #SBATCH --output=%%x-%%j.out 
 
@@ -51,18 +61,16 @@ source $HOME/.bashrc
 
 # merge and index
 samtools merge -@ 32 -f %s %s
-samtools index %s
+samtools index -@ 32 %s
 
 # remove dups
 picard MarkDuplicates I=%s O=%s M=%s VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=true
-
-# add read groups?
 
 # Build bam index for GATK
 picard BuildBamIndex I=%s
 
 # Realign around INDELs
-module load gatk/3.8
+module load gatk/4.0.0.0
 java -jar $EBROOTGATK/GenomeAnalysisTK.jar -T RealignerTargetCreator -nt 32 -R %s -I %s -o %s
 java -jar $EBROOTGATK/GenomeAnalysisTK.jar -T IndelRealigner -R %s -I %s -targetIntervals %s -o %s
 
@@ -80,7 +88,7 @@ java -jar $EBROOTGATK/GenomeAnalysisTK.jar -T SelectVariants -R %s -V %s -select
        ref,  rawvcf,  snpvcf,
        ref,  rawvcf,  indelvcf
       )
-filE = op.join(mshdir,"merge-dedup.sh")
+filE = op.join(mshdir,"%s_merge-dedup.sh" % op.basename(op.dirname(fqdir)))
 with open(filE,'w') as o:
     o.write("%s" % text)
 os.chdir(mshdir)
