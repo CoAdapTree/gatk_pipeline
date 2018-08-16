@@ -15,4 +15,4 @@
 ## Using the pipeline
 - To kick off the pipeline, first source your bashrc (`source ~/.bashrc`), `cd ~/pipeline`, and run `01a_trim-fastq.py` from the home node, and it will run the rest of the preprocessing pipeline automatically by serially sbatching jobs (through 01b). See example datatable.txt file needed for 00_start-pipeline.py.
 
-`(py27) [user@server pipelinefolder]$ python 00_start-pipeline.py /path/to/folder/with/fastq.gzfiles/`
+`(py27) [user@host pipeline]$ python 00_start-pipeline.py /path/to/folder/with/fastq.gzfiles/`
