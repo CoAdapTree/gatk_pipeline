@@ -3,7 +3,6 @@ import pandas as pd
 from collections import OrderedDict, Counter
 import os
 from os import path as op
-from os import listdir
 import pickle
 import random
 import matplotlib.pyplot as plt
@@ -27,7 +26,7 @@ from decimal import Decimal
 from datetime import datetime as dt
 
 def ls(DIR):
-    return sorted([f for f in os.listdir(DIR)]
+    return sorted([f for f in os.listdir(DIR)])
 def fs(DIR):
     return (sorted([op.join(DIR,f) for f in ls(DIR)]))
 def uni(mylist):

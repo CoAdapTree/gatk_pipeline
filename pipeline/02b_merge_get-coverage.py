@@ -1,19 +1,24 @@
-import sys
-import os
-from os import path as op
-from os import listdir as ls
-def fs (DIR):
-    return (sorted([op.join(DIR,f) for f in ls(DIR)]))
-
 ###
-# execution: 02_merge-bams-and-mark-dups.py /path/to/fastq.gz-folder/ 
+# execution: 02b_merge_get-coverage.py /path/to/fastq.gz-folder/ 
 ###
 
 ###
 # when using samtools from anaconda, change default_jvm_mem_opts to "-Xms512m -Xmx4g" in <which picard> file
 ###
 
+### args
 thisfile, fqdir, ref = sys.argv
+### 
+
+### imports 
+import sys
+import os
+from os import path as op
+from os import listdir as ls
+def fs (DIR):
+    return (sorted([op.join(DIR,f) for f in ls(DIR)]))
+### 
+
 
 # create dirs
 mergedir = op.join(fqdir,'rg_filtered_indexed_sorted_bamfiles')

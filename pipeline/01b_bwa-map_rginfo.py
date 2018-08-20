@@ -90,6 +90,8 @@ samtools index %s
 #add rginfo
 picard AddOrReplaceReadGroups RGID=%s RGLB=%s RGPL=%s RGPU=%s RGSM=%s I=%s O=%s
 samtools index %s
+
+#mark dups
 ''' % (str(tcount).zfill(3), str(tcount).zfill(3),
        ref,  r1out,  r2out,  samfile,
        samfile,  bamfile,
