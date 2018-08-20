@@ -10,7 +10,7 @@
 1. install gatk or make sure there is a module (eg `module load gatk/4.0.0.0`)
 1. copy the following into your $HOME/.bashrc file so that the def-someuser reflects your compute canada account
     ```
-    export SLURM_ACCOUNT=def-saitken  
+    export SLURM_ACCOUNT=def-someuser  
     export SBATCH_ACCOUNT=$SLURM_ACCOUNT  
     export SALLOC_ACCOUNT=$SLURM_ACCOUNT
     ```
