@@ -9,9 +9,11 @@
 1. install picardtools with anaconda (after activating env: `conda install -c bioconda picard`)
 1. install gatk or make sure there is a module (eg `module load gatk/4.0.0.0`)
 1. copy the following into your $HOME/.bashrc file so that the def-someuser reflects your compute canada account
-    `export SLURM_ACCOUNT=def-saitken  
+    ```
+    export SLURM_ACCOUNT=def-saitken  
     export SBATCH_ACCOUNT=$SLURM_ACCOUNT  
-    export SALLOC_ACCOUNT=$SLURM_ACCOUNT`
+    export SALLOC_ACCOUNT=$SLURM_ACCOUNT
+    ```
 1. clone the pipeline repo to the server and create a symlink in `$HOME` so that it can be accessed via `$HOME/pipeline`
 
 -----
