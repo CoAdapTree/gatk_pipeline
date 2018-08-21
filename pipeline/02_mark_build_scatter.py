@@ -1,5 +1,5 @@
 ###
-# execution: 02b_merge_get-coverage.py /path/to/rgout /path/to/fastq.gz-folder/ /path/to/ref.fa <int passed from 01b.py>
+# execution: 02_mark_build_scatter.py /path/to/rgout /path/to/fastq.gz-folder/ /path/to/ref.fa <int passed from 01b.py>
 ###
 
 ###
@@ -45,9 +45,9 @@ dupfile   = op.join(dupdir,"%s_rd.bam" % samp)
 dupstat   = op.join(dupdir,"%s_rd_dupstat.txt" % samp)
 gatklist  = op.join(gatkdir,'realignment_targets.list')
 realigned = op.join(gatkdir,'realigned_reads.bam')
-rawvcf    = op.join(vcfdir,'raw_%s.vcf' % samp)
-snpvcf    = op.join(vcfdir,'snps_%s.vcf' % samp)
-indelvcf  = op.join(vcfdir,'indel_%s.vcf' % samp)
+rawvcf    = op.join(vcfdir,'raw_%s.g.vcf.gz' % samp)
+snpvcf    = op.join(vcfdir,'snps_%s.g.vcf.gz' % samp)
+indelvcf  = op.join(vcfdir,'indel_%s.g.vcf.gz' % samp)
 
 #get ploidy and rginfo
 PLOIDY = pickle.load(open(op.join(fqdir,'ploidy.pkl')))
@@ -57,66 +57,16 @@ rginfo = pickle.load(open(op.join(fqdir,'rginfo.pkl')))
 
 # create sh files
 shfiles = []
-if ploidy > 2: #non poolseq
+if ploidy > 2: #poolseq
     print "this is a poolseq file"
     # run it
     text = '''#!/bin/bash
-#SBATCH --account=def-saitken
-#SBATCH --time=11:59:00
-#SBATCH --nodes=4
-#SBATCH --mem=200000mb
-#SBATCH --cpus-per-task=32
-#SBATCH --ntasks-per-node=1
-#SBATCH --job-name=mark%s
-#SBATCH --export=all
-#SBATCH --output=mark%s_%%j.out 
-#SBATCH --mail-user=lindb@vcu.edu
-#SBATCH --mail-type=FAIL
-
-source $HOME/.bashrc
-module load gatk/4.0.0.0
-module load spark/2.2.0
-export SPARK_IDENT_STRING=$SLURM_JOBID
-export SPARK_WORKER_DIR=$SLURM_TMPDIR
-
-# startup spark
-start-master.sh
-sleep 1
-MASTER_URL=$(grep -Po '(?=spark://).*' $SPARK_LOG_DIR/spark-${SPARK_IDENT_STRING}-org.apache.spark.deploy.master*.out)
-NWORKERS=$((SLURM_NTASKS - 1))
-SPARK_NO_DAEMONIZE=1 srun -n ${NWORKERS} -N ${NWORKERS} --label --output=$SPARK_LOG_DIR/spark-%j-workers.out start-slave.sh -m ${SLURM_MEM_PER_NODE}M -c ${SLURM_CPUS_PER_TASK} ${MASTER_URL} &
-slaves_pid=$!
-echo $MASTER_URL
-
-# remove dups
-picard MarkDuplicates I=%s O=%s M=%s VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=true
-
-# Build bam index for GATK
-picard BuildBamIndex I=%s:q
-
-# call variants
-java -jar $EBROOTGATK/GenomeAnalysisTK.jar --java-options "-Xmx8g" -T HaplotypeCaller -sample-ploidy %s -R %s -genotyping-mode DISCOVERY -ERC GVCF -I %s -o %s -- --spark-runner SPARK --spark-master $MASTER_URL -num-executors 1 --executor-cores 32 --executor-memory 8000m 
-
-kill $slaves_pid
-stop-master.sh
-    ''' % (str(tcount).zfill(3), str(tcount).zfill(3),
-           rgout, dupfile,  dupstat,
-           dupfile,
-           ploidy,  ref,  realigned,  rawvcf,
-          )
-else: # poolseq
-#     for i in range(1000):
-    print "this is an individual's file"
-    for i in range(1):
-        scaff = "Scaffold_%i"  % i
-        text = '''#!/bin/bash
-#SBATCH --account=def-saitken
-#SBATCH --time=11:59:00
+#SBATCH --time=14-00:00 # 14 days
 #SBATCH --nodes=1
-#SBATCH --mem=200000mb
-#SBATCH --cpus-per-task=32
+#SBATCH --mem=200000M
+#SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --job-name=mark%s
+#SBATCH --job-name=%smark%s
 #SBATCH --export=all
 #SBATCH --output=mark%s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
@@ -124,18 +74,6 @@ else: # poolseq
 
 source $HOME/.bashrc
 module load gatk/4.0.0.0
-module load spark/2.2.0
-export SPARK_IDENT_STRING=$SLURM_JOBID
-export SPARK_WORKER_DIR=$SLURM_TMPDIR
-
-# startup spark
-start-master.sh
-sleep 1
-MASTER_URL=$(grep -Po '(?=spark://).*' $SPARK_LOG_DIR/spark-${SPARK_IDENT_STRING}-org.apache.spark.deploy.master*.out)
-NWORKERS=$((SLURM_NTASKS - 1))
-SPARK_NO_DAEMONIZE=1 srun -n ${NWORKERS} -N ${NWORKERS} --label --output=$SPARK_LOG_DIR/spark-%%j-workers.out start-slave.sh -m ${SLURM_MEM_PER_NODE}M -c ${SLURM_CPUS_PER_TASK} ${MASTER_URL} &
-slaves_pid=$!
-echo $MASTER_URL
 
 # remove dups
 picard MarkDuplicates I=%s O=%s M=%s VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=true
@@ -145,21 +83,74 @@ picard BuildBamIndex I=%s
 
 # call variants
 module load gatk/4.0.0.0
-java -jar $EBROOTGATK/gatk-package-4.0.0.0-spark.jar --java-options "-Xmx8g" -T HaplotypeCaller -sample-ploidy %s -R %s -genotyping-mode DISCOVERY -ERC GVCF -I %s -o %s -- --spark-runner SPARK --spark-master $MASTER_URL -num-executors 1 --executor-cores 32 --executor-memory 8000m 
+gatk HaplotypeCaller --sample-ploidy %s -R %s --genotyping-mode DISCOVERY -ERC GVCF -I %s -O %s  
 
-kill $slaves_pid
-stop-master.sh
-    ''' % ("%s_%s" % (scaff,str(tcount).zfill(3)),
-           "%s_%s" % (scaff,str(tcount).zfill(3)),
-           rgout, dupfile,  dupstat,
-           dupfile,
-           ploidy,  ref,  realigned,  rawvcf,
-          )
 
-print text
+''' % (pool,
+       str(tcount).zfill(3),
+       str(tcount).zfill(3),
+       rgout, dupfile,  dupstat,
+       dupfile,
+       ploidy,  ref,  dupfile,  rawvcf,
+      )
+# ''' % ("%s_%s" % (scaff,str(tcount).zfill(3)),
+#        "%s_%s" % (scaff,str(tcount).zfill(3)),
+#        rgout, dupfile,  dupstat,
+#        dupfile,
+#        ploidy,  ref,  dupfile,  rawvcf,
+#       )
+    filE = op.join(mshdir,'%s.sh' % samp)
+    with open(filE,'w') as o:
+        o.write("%s" % text)
+    shfiles.append(filE)
+else: # non poolseq
+    print "this is an individual's file"
+    text = '''#!/bin/bash
+#SBATCH --time=7-00:00 # 7 days
+#SBATCH --nodes=1
+#SBATCH --mem=200000M
+#SBATCH --cpus-per-task=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --job-name=%smark%s
+#SBATCH --export=all
+#SBATCH --output=mark%s_%%j.out 
+#SBATCH --mail-user=lindb@vcu.edu
+#SBATCH --mail-type=FAIL
 
-# for s in shfiles:
-#     os.system('sbatch %s' % s)
+source $HOME/.bashrc
+module load gatk/4.0.0.0
+
+# remove dups
+picard MarkDuplicates I=%s O=%s M=%s VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=true
+
+# Build bam index for GATK
+picard BuildBamIndex I=%s
+
+# call variants
+module load gatk/4.0.0.0
+gatk HaplotypeCaller --sample-ploidy %s -R %s --genotyping-mode DISCOVERY -ERC GVCF -I %s -O %s  
+
+
+''' % (pool,
+       str(tcount).zfill(3),
+       str(tcount).zfill(3),
+       rgout, dupfile,  dupstat,
+       dupfile,
+       ploidy,  ref,  dupfile,  rawvcf,
+      )
+
+
+
+    filE = op.join(mshdir,'%s.sh' % samp)
+    with open(filE,'w') as o:
+        o.write("%s" % text)
+    shfiles.append(filE)
+
+print shfiles
+
+for s in shfiles:
+    os.chdir(op.dirname(s))
+    os.system('sbatch %s' % s)
 
 
 

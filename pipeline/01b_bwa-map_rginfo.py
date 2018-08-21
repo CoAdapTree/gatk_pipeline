@@ -75,7 +75,6 @@ text = '''#!/bin/bash
 #SBATCH --mail-user=lindb@vcu.edu
 #SBATCH --mail-type=FAIL
 
-
 source $HOME/.bashrc
 
 bwa mem -t 32 -M %s %s %s > %s
@@ -91,7 +90,9 @@ samtools index %s
 picard AddOrReplaceReadGroups RGID=%s RGLB=%s RGPL=%s RGPU=%s RGSM=%s I=%s O=%s
 samtools index %s
 
-#mark dups
+#mark dups, build bam index, call GVCF
+cd $HOME/pipeline
+python 02_mark_build_scatter.py %s %s %s %s
 ''' % (str(tcount).zfill(3), str(tcount).zfill(3),
        ref,  r1out,  r2out,  samfile,
        samfile,  bamfile,
@@ -100,7 +101,8 @@ samtools index %s
        sortfile, filtfile,
        filtfile,
        RG['rgid'], RG['rglb'], RG['rgpl'], RG['rgpu'], RG['rgsm'], filtfile, rgfile,
-       rgfile
+       rgfile,
+       rgfile, fqdir, ref, str(tcount).zfill(3)
       )
 
 # !cat $text | qsub    # so much easier with jupyter
