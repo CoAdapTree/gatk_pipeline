@@ -63,7 +63,7 @@ if ploidy > 2: #poolseq
     text = '''#!/bin/bash
 #SBATCH --time=14-00:00 # 14 days
 #SBATCH --nodes=1
-#SBATCH --mem=200000M
+#SBATCH --mem=140000M
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --job-name=%smark%s
@@ -108,7 +108,7 @@ else: # non poolseq
     text = '''#!/bin/bash
 #SBATCH --time=7-00:00 # 7 days
 #SBATCH --nodes=1
-#SBATCH --mem=200000M
+#SBATCH --mem=140000M
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --job-name=%smark%s
