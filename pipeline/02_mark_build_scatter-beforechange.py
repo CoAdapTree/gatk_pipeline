@@ -6,6 +6,10 @@
 # when using samtools from anaconda, change default_jvm_mem_opts to "-Xms512m -Xmx4g" in <which picard> file
 ###
 
+###
+# note that you will need to change the location of the -L interval files (idir) or (pdir)
+###
+
 ### imports 
 import sys
 import os
@@ -30,6 +34,7 @@ for d in [rgdir,shdir]:
 # mergeoutdir = op.join(fqdir,'merged_rg_filtered_indexed_sorted_bamfiles')
 dupdir  = op.join(fqdir,'dedup_rg_filtered_indexed_sorted_bamfiles')
 mshdir  = op.join(shdir,'mark_shfiles')
+[os.remove(f) for f in fs(mshdir) if f.endswith('.sh')] # don't want to submit the wrong files
 gatkdir = op.join(fqdir,'gatkdir')
 vcfdir  = op.join(fqdir,'vcfs')
 for d in [dupdir,mshdir,gatkdir,vcfdir]:
@@ -57,16 +62,21 @@ rginfo = pickle.load(open(op.join(fqdir,'rginfo.pkl')))
 
 # create sh files
 shfiles = []
+shcount = 0
 if ploidy > 2: #poolseq
     print "this is a poolseq file"
     # run it
-    text = '''#!/bin/bash
-#SBATCH --time=14-00:00 # 14 days
+    pdir = '/scratch/lindb/testdata/intervals/pooled'
+    pfiles = [f for f in fs(pdir) if f.endswith('.list')]
+    for scaff in pfiles:
+        s = "scaff%s" % scaff.split(".list")[0].split("scaff_")[1]
+        text = '''#!/bin/bash
+#SBATCH --time=02:59:00
 #SBATCH --nodes=1
 #SBATCH --mem=140000M
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --job-name=%smark%s
+#SBATCH --job-name=%s%s%s
 #SBATCH --export=all
 #SBATCH --output=mark%s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
@@ -83,35 +93,33 @@ picard BuildBamIndex I=%s
 
 # call variants
 module load gatk/4.0.0.0
-gatk HaplotypeCaller --sample-ploidy %s -R %s --genotyping-mode DISCOVERY -ERC GVCF -I %s -O %s  
+gatk HaplotypeCaller --sample-ploidy %s -R %s --genotyping-mode DISCOVERY -ERC GVCF -I %s -O %s -L %s
 
-
-''' % (pool,
-       str(tcount).zfill(3),
+''' % (s, pool, str(tcount).zfill(3),
        str(tcount).zfill(3),
        rgout, dupfile,  dupstat,
        dupfile,
-       ploidy,  ref,  dupfile,  rawvcf,
+       ploidy,  ref,  dupfile,  rawvcf.replace(".g.vcf.gz","_%s.g.vcf.gz" % s),
+       scaff
       )
-# ''' % ("%s_%s" % (scaff,str(tcount).zfill(3)),
-#        "%s_%s" % (scaff,str(tcount).zfill(3)),
-#        rgout, dupfile,  dupstat,
-#        dupfile,
-#        ploidy,  ref,  dupfile,  rawvcf,
-#       )
-    filE = op.join(mshdir,'%s.sh' % samp)
-    with open(filE,'w') as o:
-        o.write("%s" % text)
-    shfiles.append(filE)
+        filE = op.join(mshdir,'%s_%s.sh' % (samp,s))
+        with open(filE,'w') as o:
+            o.write("%s" % text)
+        shfiles.append(filE)
 else: # non poolseq
     print "this is an individual's file"
-    text = '''#!/bin/bash
-#SBATCH --time=7-00:00 # 7 days
+    idir = '/scratch/lindb/testdata/intervals/individual'
+    ifiles = [f for f in fs(idir) if f.endswith('.list')]
+    print 'len(ifiles)=',len(ifiles)
+    for scaff in ifiles:
+        s = "scaff%s" % scaff.split(".list")[0].split("scaff_")[1]
+        text = '''#!/bin/bash
+#SBATCH --time=02:59:00
 #SBATCH --nodes=1
 #SBATCH --mem=140000M
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --job-name=%smark%s
+#SBATCH --job-name=%s%s%s
 #SBATCH --export=all
 #SBATCH --output=mark%s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
@@ -128,23 +136,20 @@ picard BuildBamIndex I=%s
 
 # call variants
 module load gatk/4.0.0.0
-gatk HaplotypeCaller --sample-ploidy %s -R %s --genotyping-mode DISCOVERY -ERC GVCF -I %s -O %s  
+gatk HaplotypeCaller --sample-ploidy %s -R %s --genotyping-mode DISCOVERY -ERC GVCF -I %s -O %s -L %s
 
-
-''' % (pool,
+''' % (s,  pool,  str(tcount).zfill(3),
        str(tcount).zfill(3),
-       str(tcount).zfill(3),
-       rgout, dupfile,  dupstat,
+       rgout,  dupfile,  dupstat,
        dupfile,
-       ploidy,  ref,  dupfile,  rawvcf,
+       ploidy,  ref,  dupfile,  rawvcf.replace(".g.vcf.gz","_%s.g.vcf.gz" % s),
+       scaff
       )
-
-
-
-    filE = op.join(mshdir,'%s.sh' % samp)
-    with open(filE,'w') as o:
-        o.write("%s" % text)
-    shfiles.append(filE)
+        filE = op.join(mshdir,'%s_%s.sh' % (samp,s))
+        print filE
+        with open(filE,'w') as o:
+            o.write("%s" % text)
+        shfiles.append(filE)
 
 print shfiles
 

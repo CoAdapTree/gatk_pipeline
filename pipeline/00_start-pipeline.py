@@ -38,6 +38,11 @@ thisfile, fqdir = sys.argv
 # read in the datatable, save rginfo for later
 print 'reading datatable, getting rginfo'
 datatable = op.join(fqdir,'datatable.txt')
+try:
+    assert op.exists(datatable)
+except AssertionError:
+    print 'the datafile is not in the necessary path: %s' % datatable
+    sys.exit(3)
 data    = pd.read_csv(datatable,sep='\t')
 rginfo  = {} #key=sampname vals=rginfo
 f2pool  = {} #key=filename val=pool
@@ -98,12 +103,12 @@ for f in datafiles:
         print "creating fastq symlinks"
         if not op.exists(dst):
             os.symlink(src,dst)
-        pklsrc = op.join(fqdir,'ploidy.pkl') # no need to assert
+        pklsrc = op.join(fqdir,'ploidy.pkl') # no need to assert - also I never use this symlinked file
         pkldst = op.join(pooldir,'ploidy.pkl')
         print "creating ploidy symlink"
         if not op.exists(pkldst):
             os.symlink(pklsrc,pkldst)
-        rgsrc = op.join(fqdir,'rginfo.pkl')  # no need to assert
+        rgsrc = op.join(fqdir,'rginfo.pkl')  # no need to assert - also I never use this symlinked file
         rgdst = op.join(pooldir,'rginfo.pkl')
         print "creating rginfo symlink"
         if not op.exists(rgdst):
@@ -144,7 +149,7 @@ python 01a_trim-fastq.py %s %s
 
 # sbatch jobs
 print 'sbatching sh files'
-#sbatch(shdir)
+sbatch(shdir)
 
 
 
