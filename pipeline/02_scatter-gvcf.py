@@ -41,7 +41,7 @@ scheddir = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
 for d in [gvcfdir,gatkdir,vcfdir,scheddir]:
     if not op.exists(d):
         os.makedirs(d)
-#[os.remove(f) for f in fs(gvcfdir) if f.endswith('.sh')] # don't want to submit the wrong files
+# [os.remove(f) for f in fs(gvcfdir) if f.endswith('.sh')] # only do this if 'ls'-ing gvcfdir to create symlinks in scheddir (filename changes wont be overwritten for different filename patterns when debugging)
 
     
 # create filenames
@@ -64,15 +64,19 @@ shfiles = []
 shcount = 0
 if ploidy > 2: #poolseq
     print "this is a poolseq file"
-    # run it
-    pdir = '/scratch/lindb/testdata/intervals/pooled'
-    pfiles = [f for f in fs(pdir) if f.endswith('.list')]
-    for scaff in pfiles:
-        s = "scaff%s" % scaff.split(".list")[0].split("scaff_")[1]
-        text = '''#!/bin/bash
-#SBATCH --time=11:59:00
+    scafdir = '/scratch/lindb/testdata/intervals/pooled'
+else:
+    print "this is an individual's file"
+    scafdir = '/scratch/lindb/testdata/intervals/individual'
+    
+scaffiles = [f for f in fs(scafdir) if f.endswith('.list')]
+for scaff in scaffiles:
+    s = "scaff%s" % scaff.split(".list")[0].split("scaff_")[1]
+    filE = op.join(gvcfdir,'%s_%s.sh' % (samp,s))
+    text = '''#!/bin/bash
+#SBATCH --time=02:59:00
 #SBATCH --nodes=1
-#SBATCH --mem=60000M
+#SBATCH --mem=8000M
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --job-name=%s%s%s
@@ -80,71 +84,47 @@ if ploidy > 2: #poolseq
 #SBATCH --output=mark%s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
 
+# for debugging and rescheduler
+cat $0 
+echo %s
 
 source $HOME/.bashrc
 module load gatk/4.0.0.0
+
+# resubmit jobs with errors
+cd $HOME/pipeline
+python rescheduler.py %s
+
+# fill up the queue
+cd $HOME/pipeline
+python scheduler.py %s
 
 # call variants
 gatk HaplotypeCaller --sample-ploidy %s -R %s --genotyping-mode DISCOVERY -ERC GVCF -I %s -O %s -L %s --minimum-mapping-quality 20
 
+# keep running jobs until time runs out
+echo 'getting help from gvcf_helper'
 cd $HOME/pipeline
-python scheduler.py %s
+python gvcf_helper.py %s
+
 
 ''' % (s,  pool,  str(tcount).zfill(3),
        str(tcount).zfill(3),
-       ploidy,  ref,  dupfile,  rawvcf.replace(".g.vcf.gz","_%s.g.vcf.gz" % s),
-       scaff,
-       fqdir       
-      )
-        filE = op.join(gvcfdir,'%s_%s.sh' % (samp,s))
-        with open(filE,'w') as o:
-            o.write("%s" % text)
-        dst = op.join(scheddir,op.basename(filE))
-        if not op.exists(dst):
-            os.symlink(filE,dst)
-#         shfiles.append(filE)
-        
-else: # non poolseq
-    print "this is an individual's file"
-    idir = '/scratch/lindb/testdata/intervals/individual'
-    ifiles = [f for f in fs(idir) if f.endswith('.list')]
-    print 'len(ifiles)=',len(ifiles)
-    for scaff in ifiles:
-        s = "scaff%s" % scaff.split(".list")[0].split("scaff_")[1]
-        text = '''#!/bin/bash
-#SBATCH --time=2:59:00
-#SBATCH --nodes=1
-#SBATCH --mem=20000M
-#SBATCH --cpus-per-task=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --job-name=%s%s%s
-#SBATCH --export=all
-#SBATCH --output=mark%s_%%j.out 
-#SBATCH --mail-user=lindb@vcu.edu
-
-
-source $HOME/.bashrc
-module load gatk/4.0.0.0
-
-# call variants
-gatk HaplotypeCaller --sample-ploidy %s -R %s --genotyping-mode DISCOVERY -ERC GVCF -I %s -O %s -L %s --minimum-mapping-quality 20 
-
-cd $HOME/pipeline
-python scheduler.py %s
-
-''' % (s,  pool,  str(tcount).zfill(3),
-       str(tcount).zfill(3),
-       ploidy,  ref,  dupfile,  rawvcf.replace(".g.vcf.gz","_%s.g.vcf.gz" % s),
-       scaff,
+       filE,
+       fqdir,
+       fqdir,
+       ploidy,  ref,  dupfile,  rawvcf.replace(".g.vcf.gz","_%s.g.vcf.gz" % s), scaff,
        fqdir
       )
-        filE = op.join(gvcfdir,'%s_%s.sh' % (samp,s))
-        with open(filE,'w') as o:
-            o.write("%s" % text)
-        dst = op.join(scheddir,op.basename(filE))
-        if not op.exists(dst):
-            os.symlink(filE,dst)
+    with open(filE,'w') as o:
+        o.write("%s" % text)
+    # now create a symlink in scheddir
+    dst = op.join(scheddir,op.basename(filE))
+    if not op.exists(dst):
+        os.symlink(filE,dst)
 #         shfiles.append(filE)
+# see footnote for saved/deleted text        
+
 
 # submit to scheduler
 pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
@@ -163,3 +143,55 @@ os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),fqdir))
 
 
 
+#footnote
+# easier ^, 'if ploidy > 2: do the same as below but with pdir and pfiles' (saving just in case)
+# else: # non poolseq
+#     print "this is an individual's file"
+#     idir = '/scratch/lindb/testdata/intervals/individual'
+#     ifiles = [f for f in fs(idir) if f.endswith('.list')]
+#     print 'len(ifiles)=',len(ifiles)
+#     for scaff in ifiles:
+#         s = "scaff%s" % scaff.split(".list")[0].split("scaff_")[1]
+#         filE = op.join(gvcfdir,'%s_%s.sh' % (samp,s))
+#         text = '''#!/bin/bash
+# #SBATCH --time=2:59:00
+# #SBATCH --nodes=1
+# #SBATCH --mem=8000M
+# #SBATCH --cpus-per-task=1
+# #SBATCH --ntasks-per-node=1
+# #SBATCH --job-name=%s%s%s
+# #SBATCH --export=all
+# #SBATCH --output=mark%s_%%j.out 
+# #SBATCH --mail-user=lindb@vcu.edu
+
+# # for debugging and rescheduler
+# cat $0 
+# echo %s
+
+# source $HOME/.bashrc
+# module load gatk/4.0.0.0
+
+# # This job will eventually fail (by design) so run the scheduler first
+# cd $HOME/pipeline
+# python scheduler.py %s
+
+# # call variants
+# gatk HaplotypeCaller --sample-ploidy %s -R %s --genotyping-mode DISCOVERY -ERC GVCF -I %s -O %s -L %s --minimum-mapping-quality 20 
+
+# # keep running jobs until time runs out
+# cd $HOME/pipeline
+# python gvcf_helper %s
+
+# ''' % (s,  pool,  str(tcount).zfill(3),
+#        str(tcount).zfill(3),
+#        filE,
+#        fqdir,
+#        ploidy,  ref,  dupfile,  rawvcf.replace(".g.vcf.gz","_%s.g.vcf.gz" % s), scaff,
+#        fqdir
+#       )
+#         with open(filE,'w') as o:
+#             o.write("%s" % text)
+#         dst = op.join(scheddir,op.basename(filE))
+#         if not op.exists(dst):
+#             os.symlink(filE,dst)
+# #         shfiles.append(filE)

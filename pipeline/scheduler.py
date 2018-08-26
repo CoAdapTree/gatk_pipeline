@@ -19,17 +19,20 @@ thisfile, fqdir = sys.argv
 
 ### reqs
 DIR       = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
-print DIR
+# print DIR # this could screw up rescheduler.py if printed, but probably not since I look for .sh
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
-qthresh   = 200
+qthresh   = 201
 ###
 
 ### defs
+print 'running scheduler.py'
 def sq(command):
+    # how many jobs are running
     return int(os.popen(str(command)).read().replace("\n",""))
 def delsched(scheduler):
+    # stop scheduler
     try:
         os.remove(scheduler)
     except OSError as e:
@@ -46,14 +49,14 @@ def sbatchjobs(files):
             print 'unable to unlink symlink %f' % f
             pass
 def main():
-# write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
+    # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
     x = sq("squeue -u lindb | grep 'lindb' | wc -l") # number of jobs in the queue
     if x < qthresh: # if there is room in the queue
         print 'scheduler not running'
         print 'queue length less than thresh'
         nsbatch = qthresh - x # how many should I submit?
-        files   = [f for f in fs(DIR) if not 'scheduler.txt' in f][0:nsbatch]
+        files   = [f for f in fs(DIR) if not 'scheduler.txt' in f and '.out' not in f][0:nsbatch]
         if len(files) > 0:
             print 'submitting %s jobs' % str(nsbatch)
             sbatchjobs(files)
