@@ -19,7 +19,6 @@ thisfile, fqdir = sys.argv
 
 ### reqs
 DIR       = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
-# print DIR # this could screw up rescheduler.py if printed, but probably not since I look for .sh
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)

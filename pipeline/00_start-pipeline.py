@@ -46,6 +46,7 @@ except AssertionError:
 data    = pd.read_csv(datatable,sep='\t')
 rginfo  = {} #key=sampname vals=rginfo
 f2pool  = {} #key=filename val=pool
+samp2pool= {} #key=samp val=pool
 poolref = {} #key=pool val=ref.fa
 ploidy  = {} #key=pool val=ploidy
 for row in data.index:
@@ -53,6 +54,7 @@ for row in data.index:
         data.loc[row,'pool_name'] = data.loc[row,'sample_name']
     samp = data.loc[row,'sample_name']
     pool = data.loc[row,'pool_name']
+    samp2pool[samp] = pool
     df = data[data['pool_name'] == pool].copy()
     try:
         assert luni(df['ploidy']) == 1
@@ -77,6 +79,7 @@ for row in data.index:
         f2pool[f] = pool
 pkldump(rginfo,op.join(fqdir,'rginfo.pkl'))
 pkldump(ploidy,op.join(fqdir,'ploidy.pkl'))
+pkldump(f2pool,op.join(fqdir,'samp2pool.pkl'))
 
 # make pool dirs
 print "making pool dirs"

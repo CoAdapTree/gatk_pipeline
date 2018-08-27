@@ -35,24 +35,25 @@ shuffle(shfiles) # so I don't have to code something in to deal with/avoid multi
 print 'running gvcf_helper.py'
 for s in shfiles:
     print s # so that rescheduler can find it (should print to stdout in the sh file's .out file)
-    o = open(s,'r').readlines()
-    for line in o:
-        if line.startswith('gatk'):
-            cmd = line.replace('\n','')
-            print 'running cmd:'
-            print cmd
-            os.system('%s' % cmd)
-            print 'unlinking shfile %s'
-            try:
-                os.system('unlink %s' % s)
-            except OSError as e:
-                print 'unable to unlink %s' % s
-                pass
-            pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
-            os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),
-                                        fqdir))
-            os.system('python %s %s' % (op.join(pipedir,'rescheduler.py'),
-                                        fqdir))
-            break
-          
+    if op.exists(s):
+        o = open(s,'r').readlines()
+        for line in o:
+            if line.startswith('gatk'):
+                cmd = line.replace('\n','')
+                print 'running cmd:'
+                print cmd
+                os.system('%s' % cmd)
+                try:
+                    os.system('unlink %s' % s)
+                    print 'unlinking shfile %s' % s
+                except OSError as e:
+                    print 'unable to unlink %s' % s
+                    pass
+                pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
+                os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),
+                                            fqdir))
+                os.system('python %s %s' % (op.join(pipedir,'rescheduler.py'),
+                                            fqdir))
+                break
+
 
