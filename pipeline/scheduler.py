@@ -18,11 +18,14 @@ thisfile, fqdir = sys.argv
 ###
 
 ### reqs
+if fqdir.endswith("/"):
+    fqdir = fqdir[:-1]
 DIR       = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
+print "DIR=",DIR
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
-qthresh   = 201
+qthresh   = 304
 ###
 
 ### defs
@@ -41,12 +44,15 @@ def startscheduler(scheduler):
         o.write("scheduler")
 def sbatchjobs(files):
     for f in files:
-        os.system('sbatch %s' % f)     # maybe there will be dup sbatches? oh well hopefully not
-        try:
-            os.system('unlink %s' % f) # remove the symlink from the scheddir
-        except OSError as e:           # unless another scheduler has done so (shouldnt be the case)
-            print 'unable to unlink symlink %f' % f
-            pass
+        if op.exists(f):
+            os.system('sbatch %s' % f)     # maybe there will be dup sbatches? oh well hopefully not
+            print f
+            try:
+                os.system('unlink %s' % f) # remove the symlink from the scheddir
+                print 'made it this far'
+            except OSError as e:           # unless another scheduler has done so (shouldnt be the case)
+                print 'unable to unlink symlink %f' % f
+                pass
 def main():
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
@@ -61,10 +67,9 @@ def main():
             sbatchjobs(files)
         else:
             print 'no files to sbatch'
-        delsched(scheduler)
     else:
-        print 'scheduler was not running, but no room in queue'
-        delsched(scheduler)
+        print 'scheduler was not running, but no room in queue' 
+    delsched(scheduler)
 ###
 
 # main

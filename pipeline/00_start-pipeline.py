@@ -106,12 +106,12 @@ for f in datafiles:
         print "creating fastq symlinks"
         if not op.exists(dst):
             os.symlink(src,dst)
-        pklsrc = op.join(fqdir,'ploidy.pkl') # no need to assert - also I never use this symlinked file
+        pklsrc = op.join(fqdir,'ploidy.pkl') # no need to assert 
         pkldst = op.join(pooldir,'ploidy.pkl')
         print "creating ploidy symlink"
         if not op.exists(pkldst):
             os.symlink(pklsrc,pkldst)
-        rgsrc = op.join(fqdir,'rginfo.pkl')  # no need to assert - also I never use this symlinked file
+        rgsrc = op.join(fqdir,'rginfo.pkl')  # no need to assert 
         rgdst = op.join(pooldir,'rginfo.pkl')
         print "creating rginfo symlink"
         if not op.exists(rgdst):

@@ -20,12 +20,15 @@ def fs (DIR):
 ###
 
 ### args
-thifile, fqdir = sys.argv
+thisfile, fqdir = sys.argv
 ###
 
 os.system('source $HOME/.bashrc')
 DIR = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
 os.chdir(DIR)
+workingdir = op.join(DIR,'workingdir')
+if not op.exists(workingdir):
+    os.makedirs(workingdir)
 
 shfiles = [f for f in fs(DIR) if f.endswith('.sh')]
 shuffle(shfiles) # so I don't have to code something in to deal with/avoid multiple gvcf_helpers 'helping' the same sh file
@@ -34,9 +37,17 @@ shuffle(shfiles) # so I don't have to code something in to deal with/avoid multi
 # run commands until I run out of time
 print 'running gvcf_helper.py'
 for s in shfiles:
-    print s # so that rescheduler can find it (should print to stdout in the sh file's .out file)
     if op.exists(s):
-        o = open(s,'r').readlines()
+#         print s # so that rescheduler can find it (should print to stdout in the sh file's .out file)
+        reservation = op.join(workingdir,op.basename(s))
+        try:
+            shutil.move(s,reservation) # so that other jobs don't rewrite
+        except:
+            print 'could not move shfile %s' % s
+            print 'to reservation %s' % reservation
+            continue
+        print reservation # so that rescheduler can find it (should print to stdout in the sh file's .out file)
+        o = open(reservation,'r').readlines()
         for line in o:
             if line.startswith('gatk'):
                 cmd = line.replace('\n','')
@@ -44,10 +55,10 @@ for s in shfiles:
                 print cmd
                 os.system('%s' % cmd)
                 try:
-                    os.system('unlink %s' % s)
-                    print 'unlinking shfile %s' % s
+                    os.system('unlink %s' % reservation)
+                    print 'unlinking shfile %s' % reservation
                 except OSError as e:
-                    print 'unable to unlink %s' % s
+                    print 'unable to unlink %s' % reservation
                     pass
                 pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
                 os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),

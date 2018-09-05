@@ -41,7 +41,7 @@ scheddir = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
 for d in [gvcfdir,gatkdir,vcfdir,scheddir]:
     if not op.exists(d):
         os.makedirs(d)
-# [os.remove(f) for f in fs(gvcfdir) if f.endswith('.sh')] # only do this if 'ls'-ing gvcfdir to create symlinks in scheddir (filename changes wont be overwritten for different filename patterns when debugging)
+[os.remove(f) for f in fs(gvcfdir) if f.endswith('.sh')] # during development I only wanted to keep finalized shfiles
 
     
 # create filenames
@@ -81,7 +81,7 @@ for scaff in scaffiles:
 #SBATCH --ntasks-per-node=1
 #SBATCH --job-name=%s%s%s
 #SBATCH --export=all
-#SBATCH --output=mark%s_%%j.out 
+#SBATCH --output=gvcf%s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
 
 # for debugging and rescheduler
@@ -123,7 +123,6 @@ python gvcf_helper.py %s
     if not op.exists(dst):
         os.symlink(filE,dst)
 #         shfiles.append(filE)
-# see footnote for saved/deleted text        
 
 
 # submit to scheduler
@@ -137,61 +136,3 @@ os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),fqdir))
 #     os.system('sbatch %s' % s)
 
 
-
-
-
-
-
-
-#footnote
-# easier ^, 'if ploidy > 2: do the same as below but with pdir and pfiles' (saving just in case)
-# else: # non poolseq
-#     print "this is an individual's file"
-#     idir = '/scratch/lindb/testdata/intervals/individual'
-#     ifiles = [f for f in fs(idir) if f.endswith('.list')]
-#     print 'len(ifiles)=',len(ifiles)
-#     for scaff in ifiles:
-#         s = "scaff%s" % scaff.split(".list")[0].split("scaff_")[1]
-#         filE = op.join(gvcfdir,'%s_%s.sh' % (samp,s))
-#         text = '''#!/bin/bash
-# #SBATCH --time=2:59:00
-# #SBATCH --nodes=1
-# #SBATCH --mem=8000M
-# #SBATCH --cpus-per-task=1
-# #SBATCH --ntasks-per-node=1
-# #SBATCH --job-name=%s%s%s
-# #SBATCH --export=all
-# #SBATCH --output=mark%s_%%j.out 
-# #SBATCH --mail-user=lindb@vcu.edu
-
-# # for debugging and rescheduler
-# cat $0 
-# echo %s
-
-# source $HOME/.bashrc
-# module load gatk/4.0.0.0
-
-# # This job will eventually fail (by design) so run the scheduler first
-# cd $HOME/pipeline
-# python scheduler.py %s
-
-# # call variants
-# gatk HaplotypeCaller --sample-ploidy %s -R %s --genotyping-mode DISCOVERY -ERC GVCF -I %s -O %s -L %s --minimum-mapping-quality 20 
-
-# # keep running jobs until time runs out
-# cd $HOME/pipeline
-# python gvcf_helper %s
-
-# ''' % (s,  pool,  str(tcount).zfill(3),
-#        str(tcount).zfill(3),
-#        filE,
-#        fqdir,
-#        ploidy,  ref,  dupfile,  rawvcf.replace(".g.vcf.gz","_%s.g.vcf.gz" % s), scaff,
-#        fqdir
-#       )
-#         with open(filE,'w') as o:
-#             o.write("%s" % text)
-#         dst = op.join(scheddir,op.basename(filE))
-#         if not op.exists(dst):
-#             os.symlink(filE,dst)
-# #         shfiles.append(filE)
