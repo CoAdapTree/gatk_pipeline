@@ -1,7 +1,3 @@
-# FIX SBATCH
-# instead of sbatching, just recreate symlink in scheddir
-
-
 ###
 # usage rescheduler.py /path/to/fq.gzfiles/folder/
 ###
@@ -23,7 +19,8 @@ def fs (DIR):
 thisfile, fqdir = sys.argv
 ###
 
-
+if fqdir.endswith("/"):
+    fqdir = fqdir[:-1]
 dname = op.dirname(fqdir)
 print 'dname=',dname
 #print dirname
@@ -34,23 +31,32 @@ os.chdir(DIR)
 outs = [f for f in fs(DIR) if f.endswith('out') and not 'checked' in f]
 rescheduler = op.join(DIR,'rescheduler.txt')
 samp2pool = pickle.load(open(op.join(dname,'samp2pool.pkl')))
-def gettrush(shfile):
-    samp = op.basename(shfile).split("_scaff")[0]
-    pool = samp2pool[samp]
-    pooldir = op.join(dname,pool)
-    poolshdir = op.join(pooldir,'shfiles/gvcf_shfiles')
-    trushfile = op.join(poolshdir,op.basename(shfile))
-    return trushfile
-    
+def vcf2sh(v):
+    pooldir  = op.dirname(op.dirname(v))
+    gvcfdir  = op.join(pooldir,'shfiles/gvcf_shfiles')
+    assert op.exists(gvcfdir)
+    bname    = op.basename(v)
+    shname   = bname.replace("raw_","").replace(".g.vcf.gz",".sh")
+    shfile   = op.join(gvcfdir,shname)
+    return shfile
+def unlink(linkname):
+    try:
+        os.system('unlink %s' % linkname)
+        print 'unlinked %s' % linkname
+    except OSError as e:
+        print 'no symlink to unlink: %s' % linkname
+        pass
 
 # identify outs that aren't running
 sq = os.popen("squeue -u lindb | grep 'R 2'").read().split("\n")
+print sq
 pids = []
 for s in sq:
     if not s == '':
     #     print s
         pid = s.split()[0]
         pids.append(pid)
+print pids
 runs = []
 for out in outs:
     pid = op.basename(out).split(".out")[0].split("_")[1]
@@ -87,39 +93,37 @@ if len(outs) > 0:
                     ## ... gvcf_helper.py ran out of time
                     print 'due to time limit'
                     # determine if its original or gvcf_helper
-                    linked = False
+                    helped = False
                     for line in o[::-1]:
-                        if 'unlinking' in line:
+                        if 'getting help from gvcf_helper' in line:
                             # we dont necessarily need to increase time if last call was due to gvcf_helper.py
-                            linked = True
-                            print 'linked',linked
+                            helped = True
+                            print 'helped by gvcf_helper =',helped
                             break
-                    if linked == True:
+                    if helped == True: # if the job ended on a call from gvcf_helper.py
                         # no need to change time this first time
                         print 'leaving orginal time as-is'
                         for line in o[::-1]:
-                            if dname in line and line.endswith('.sh\n'):
-                                shfile = line.replace("\n","")
-                                trushfile = gettrush(shfile)
-                                print 'sbatching original %s' % trushfile
-                                os.system('sbatch %s' % trushfile)
-                                # unlink 
-                                bname = op.basename(trushfile)
-                                linkname = op.join(DIR,bname)
-                                print 'exists',op.exists(linkname)
-                                print 'linkname=',linkname
-                                try:
-                                    os.system('unlink %s' % linkname)
-                                    print 'unlinked %s' % linkname
-                                except OSError as e:
-                                    print 'no symlink to unlink: %s' % linkname
-                                    pass
+                            if line.startswith('    java'):
+                                vcf = line.split()[-5]
+                                trushfile = vcf2sh(vcf)
+                                shfile = op.join(DIR,op.basename(trushfile))
+                                
+                                # add job back to the queue                               
+                                print 'symlink from: %s' % shfile
+                                print 'to: %s' % trushfile
+                                if not op.exists(shfile):
+                                    os.symlink(trushfile,shfile)
+                                    print 'created symlink to original'
+                                else:
+                                    print 'unable to create symlink from %s to %s' % (shfile,trushfile)
                                 break
                     else:
                         for line in o[::-1]:
-                            if dname in line and line.endswith('.sh\n'):
-                                shfile = line.replace("\n","")
-                                trushfile = gettrush(shfile)
+                            if line.startswith('    java'):
+                                vcf = line.split()[-5]
+                                trushfile = vcf2sh(vcf)
+
                                 print 'linked to %s' % trushfile
                                 sh = open(trushfile).read()
                                 if '00:00:05' in sh: # for debugging/testing
@@ -132,16 +136,16 @@ if len(outs) > 0:
                                     text = sh.replace('23:59:00','7-00:00:00')
                                 with open(trushfile,'w') as o:
                                     o.write("%s" % text)
-                                print 'sbatching due to time limit: %s' % trushfile
-                                os.system('sbatch %s' % trushfile)
-                                try:
-                                    bname = op.basename(shfile)
-                                    linkname = op.join(DIR,bname)
-                                    os.system('unlink %s' % linkname)
-                                    print 'unlinked %s' % linkname
-                                except OSError as e:
-                                    print 'could not unlink: %s' % linkname
-                                    pass
+
+                                # add job back to the queue  
+                                linkname = op.join(DIR,op.basename(trushfile))
+                                print 'symlink from: %s' % linkname
+                                print 'to: %s' % trushfile
+                                if not op.exists(linkname):
+                                    os.symlink(trushfile,linkname)
+                                    print 'created symlink to original'
+                                else:
+                                    print 'unable to create symlink from %s to %s' % (shfile,trushfile)
                                 break
                 else:
                     edited = True
@@ -150,9 +154,9 @@ if len(outs) > 0:
                     print 'due to mem limit'
                     # find the last job and resubmit with more mem
                     for line in o[::-1]:
-                        if dname in line and line.endswith('.sh\n'):
-                            shfile = line.replace("\n","")
-                            trushfile = gettrush(shfile)
+                        if line.startswith('    java'):
+                            vcf = line.split()[-5]
+                            trushfile = vcf2sh(vcf)
                             print 'linked to %s' % trushfile
                             sh = open(trushfile).read()
                             if '8000M' in sh:
@@ -168,17 +172,17 @@ if len(outs) > 0:
                             with open(trushfile,'w') as o:
                                 o.write("%s" % text)
                             print 'sbatching due to mem limit: %s' % trushfile
-                            os.system('sbatch %s' % trushfile)
-                            bname = op.basename(shfile)
-                            linkname = op.join(DIR,bname)
-                            print 'trying to unlink'
-                            try:
-                                os.system('unlink %s' % linkname)
-                                print 'unlinked %s' % linkname
-                            except OSError as e:
-                                # if original file there is no symlink
-                                print 'unable to unlink %s' % shfile
-                                pass
+                            
+                            
+                            # add job back to the queue  
+                            linkname = op.join(DIR,op.basename(trushfile))
+                            print 'symlink from: %s' % linkname
+                            print 'to: %s' % trushfile
+                            if not op.exists(linkname):
+                                os.symlink(trushfile,linkname)
+                                print 'added symlink to queue: %s' % linkname
+                            else:
+                                print 'unable to create symlink from %s to %s' % (linkname,trushfile)
                             break
             else:
                 print 'no mem or time errors found in %s' % out

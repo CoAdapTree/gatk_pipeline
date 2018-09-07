@@ -116,7 +116,7 @@ for s in seq_pairs:
 
 cd $HOME/pipeline
 # once finished, map using bwa mem 
-python 01b_bwa-map_rginfo.py %s %s %s %s %s           
+python 01b_bwa-map_rginfo_mark_build.py %s %s %s %s %s           
 ''' % (r1  , r1out,
        r2  , r2out,
        html, json ,  logfile,
@@ -135,7 +135,6 @@ python 01b_bwa-map_rginfo.py %s %s %s %s %s
     if fcount == ceil or tcount == len(seq_pairs):
         shz = str(shcount).zfill(3)
         header = '''#!/bin/bash
-#SBATCH --account=def-saitken
 #SBATCH --job-name=trim%s
 #SBATCH --export=all
 #SBATCH --time=02:59:00

@@ -128,7 +128,6 @@ if not op.exists(shdir):
 for p in pooldirs:
     pool = op.basename(p)
     text = '''#!/bin/bash
-#SBATCH --account=def-saitken
 #SBATCH --job-name=%sstart
 #SBATCH --export=all
 #SBATCH --time=02:59:00
@@ -152,6 +151,7 @@ python 01a_trim-fastq.py %s %s
 
 # sbatch jobs
 print 'sbatching sh files'
+os.chdir(shdir)
 sbatch(shdir)
 
 

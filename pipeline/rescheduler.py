@@ -16,7 +16,7 @@ def fs (DIR):
 ###
 
 ### args
-thifile, fqdir = sys.argv
+thisfile, fqdir = sys.argv
 ###
 
 if fqdir.endswith("/"):
@@ -46,15 +46,27 @@ def unlink(linkname):
     except OSError as e:
         print 'no symlink to unlink: %s' % linkname
         pass
+def addlink(args):
+    trushfile,linkname = args
+    print 'symlink from: %s' % linkname
+    print 'to: %s' % trushfile
+    if not op.exists(linkname):
+        os.symlink(trushfile,linkname)
+        print 'added symlink to queue: %s' % linkname
+    else:
+        print 'unable to create symlink from %s to %s' % (linkname,trushfile)        
+
 
 # identify outs that aren't running
 sq = os.popen("squeue -u lindb | grep 'R 2'").read().split("\n")
+print sq
 pids = []
 for s in sq:
     if not s == '':
     #     print s
         pid = s.split()[0]
         pids.append(pid)
+print pids
 runs = []
 for out in outs:
     pid = op.basename(out).split(".out")[0].split("_")[1]
@@ -105,16 +117,11 @@ if len(outs) > 0:
                             if line.startswith('    java'):
                                 vcf = line.split()[-5]
                                 trushfile = vcf2sh(vcf)
-                                shfile = op.join(DIR,op.basename(trushfile))
+                                linkname = op.join(DIR,op.basename(trushfile))
                                 
-                                # add job back to the queue                               
-                                print 'symlink from: %s' % shfile
-                                print 'to: %s' % trushfile
-                                if not op.exists(shfile):
-                                    os.symlink(trushfile,shfile)
-                                    print 'created symlink to original'
-                                else:
-                                    print 'unable to create symlink from %s to %s' % (shfile,trushfile)
+                                # add job back to the queue 
+                                addlink((trushfile,linkname))
+
                                 break
                     else:
                         for line in o[::-1]:
@@ -137,13 +144,8 @@ if len(outs) > 0:
 
                                 # add job back to the queue  
                                 linkname = op.join(DIR,op.basename(trushfile))
-                                print 'symlink from: %s' % linkname
-                                print 'to: %s' % trushfile
-                                if not op.exists(linkname):
-                                    os.symlink(trushfile,linkname)
-                                    print 'created symlink to original'
-                                else:
-                                    print 'unable to create symlink from %s to %s' % (shfile,trushfile)
+                                addlink((trushfile,linkname))
+                                
                                 break
                 else:
                     edited = True
@@ -174,13 +176,8 @@ if len(outs) > 0:
                             
                             # add job back to the queue  
                             linkname = op.join(DIR,op.basename(trushfile))
-                            print 'symlink from: %s' % linkname
-                            print 'to: %s' % trushfile
-                            if not op.exists(linkname):
-                                os.symlink(trushfile,linkname)
-                                print 'added symlink to queue: %s' % linkname
-                            else:
-                                print 'unable to create symlink from %s to %s' % (linkname,trushfile)
+                            addlink((trushfile,linkname))
+
                             break
             else:
                 print 'no mem or time errors found in %s' % out

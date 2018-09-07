@@ -25,7 +25,7 @@ print "DIR=",DIR
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
-qthresh   = 304
+qthresh   = 200
 ###
 
 ### defs
@@ -46,10 +46,10 @@ def sbatchjobs(files):
     for f in files:
         if op.exists(f):
             os.system('sbatch %s' % f)     # maybe there will be dup sbatches? oh well hopefully not
-            print f
+            # print f
             try:
                 os.system('unlink %s' % f) # remove the symlink from the scheddir
-                print 'made it this far'
+                print 'unlinked %s' % f
             except OSError as e:           # unless another scheduler has done so (shouldnt be the case)
                 print 'unable to unlink symlink %f' % f
                 pass

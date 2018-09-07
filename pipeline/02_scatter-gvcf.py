@@ -41,7 +41,7 @@ scheddir = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
 for d in [gvcfdir,gatkdir,vcfdir,scheddir]:
     if not op.exists(d):
         os.makedirs(d)
-[os.remove(f) for f in fs(gvcfdir) if f.endswith('.sh')] # during development I only wanted to keep finalized shfiles
+#[os.remove(f) for f in fs(gvcfdir) if f.endswith('.sh')] # during development I only wanted to keep finalized shfiles
 
     
 # create filenames
