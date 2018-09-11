@@ -24,20 +24,20 @@ thisfile,ref,r1out,r2out,shdir,tcount = sys.argv
 ### create dirs and filenames
 bwashdir  = op.join(shdir,'bwa_shfiles')
 fqdir     = op.dirname(shdir)
-rginfo    = pickle.load(open(op.join(fqdir,'rginfo.pkl')))
+rginfo    = pickle.load(open(op.join(fqdir,'rginfo.pkl'),'rb'))
 count = 0
 for samp in rginfo:
     if samp in r1out:
-        print samp
+        print (samp)
         RG = rginfo[samp]
         count += 1
 try: # make sure rginfo makes sense
     assert count == 1
 except AssertionError as e:
-    print "count = %i" % count
-    print "if count = 0, could not find samp's rginfo. If count > 1, samp names are not consistent"
+    print ("count = %i" % count)
+    print ("if count = 0, could not find samp's rginfo. If count > 1, samp names are not consistent")
     sys.exit(1)
-print "RG=",RG
+print ("RG=",RG)
 rgid = RG['rgid']
 rglb = RG['rglb']
 rgpl = RG['rgpl']
@@ -70,7 +70,7 @@ rgfile  = op.join(rgdir,rg)
 dupdir  = op.join(fqdir,'dedup_rg_filtered_indexed_sorted_bamfiles')
 pool    = op.basename(op.dirname(op.dirname(rgfile)))
 samp    = op.basename(rgfile).split("---")[1].split("_R1R2")[0].split(".")[1]
-print 'samp=',samp
+print ('samp=',samp)
 mout    = op.join(rgdir,"%s.bam" % samp)
 dupfile = op.join(dupdir,"%s_rd.bam" % samp)
 dupstat = op.join(dupdir,"%s_rd_dupstat.txt" % samp)
@@ -85,7 +85,7 @@ strt = str(tcount).zfill(3)
 # send it off
 text = '''#!/bin/bash
 #SBATCH --cpus-per-task=32
-#SBATCH --job-name=bwa%(strt)s
+#SBATCH --job-name=bwa%(samp)s%(strt)s
 #SBATCH --export=all
 #SBATCH --time=02:59:00
 #SBATCH --mem=30000mb
@@ -120,11 +120,9 @@ cd $HOME/pipeline
 python 02_scatter-gvcf.py %(rgfile)s %(fqdir)s %(ref)s %(strt)s
 ''' % locals()
 
-# !cat $text | qsub    # so much easier with jupyter
 qsubfile = op.join(bwashdir,'bwa_%s.sh' % tcount) # to avoid 2+ files written at same time
 with open(qsubfile,'w') as o:
     o.write("%s" % text)
-# os.system('cd %s' % op.dirname(qsubfile))
 os.chdir(op.dirname(qsubfile)) # redundant to ^
 os.system("sbatch %s" % qsubfile)
-print 'finished!'
+print ('finished!')

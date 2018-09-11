@@ -26,7 +26,7 @@ def fs (DIR):
 thisfile, rgout, fqdir, ref, tcount = sys.argv
 ### 
 
-print 'fqdir =',fqdir
+print ('fqdir =',fqdir)
 
 # create dirs
 rgdir = op.join(fqdir,'rg_filtered_indexed_sorted_bamfiles')
@@ -54,19 +54,19 @@ rawvcf    = op.join(vcfdir,'raw_%s.g.vcf.gz' % samp)
 
 
 #get ploidy 
-PLOIDY = pickle.load(open(op.join(fqdir,'ploidy.pkl')))
+PLOIDY = pickle.load(open(op.join(fqdir,'ploidy.pkl'),'rb'))
 ploidy = int(PLOIDY[pool])
 assert type(ploidy) == int
-print 'ploidy =',ploidy
+print ('ploidy =',ploidy)
 
 # create sh files
 shfiles = []
 shcount = 0
 if ploidy > 2: #poolseq
-    print "this is a poolseq file"
+    print ("this is a poolseq file")
     scafdir = '/scratch/lindb/testdata/intervals/pooled'
 else:
-    print "this is an individual's file"
+    print ("this is an individual's file")
     scafdir = '/scratch/lindb/testdata/intervals/individual'
     
 scaffiles = [f for f in fs(scafdir) if f.endswith('.list')]
@@ -122,17 +122,12 @@ python gvcf_helper.py %s
     dst = op.join(scheddir,op.basename(filE))
     if not op.exists(dst):
         os.symlink(filE,dst)
-#         shfiles.append(filE)
 
 
-# submit to scheduler
+# # submit to scheduler
 pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
 os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),fqdir))
 
-#the old way I was doing it
-# print shfiles
-# for s in shfiles:
-#     os.chdir(op.dirname(s))
-#     os.system('sbatch %s' % s)
+
 
 

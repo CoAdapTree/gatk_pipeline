@@ -30,7 +30,7 @@ for i,arg in enumerate([ref,fqdir]):
     try:
         assert op.exists(arg)
     except AssertionError as e:
-        print "The %s'th argument does not exist in the specified path" % str(i)
+        print ("The %s'th argument does not exist in the specified path" % str(i))
         sys.exit(1)
 
 # # more imports and aliases (don't think I need this any more)
@@ -60,7 +60,7 @@ lgz     = len(gzfiles)
 # !echo 'found '$lgz' gz files in '$fqdir >> $fqdir'/messages/msgs.txt' # only works in jupyter notebooks :'(
 # instead of ^, do (lame/boring):
 text = 'found %s R1 fastq.gz files in %s' % (lgz, fqdir)
-print text
+print (text)
 with open(mfile,'w') as o:
     o.write("%s\n" % text)
 
@@ -77,10 +77,10 @@ for f in gzfiles:
         text = 'no pair for %s' % f
         with open(mfile,'a') as o:
             o.write("%s\n" % text)
-print "found %s R1/R2 seq pairs" % str(len(seq_pairs))
-print "type(len(seq_pairs)) =",type(len(seq_pairs))
-print "type(lensh) =",type(lensh)
-print "len(seq_pairs) <= lensh?", len(seq_pairs) <= lensh
+print ("found %s R1/R2 seq pairs" % str(len(seq_pairs)))
+print ("type(len(seq_pairs)) =",type(len(seq_pairs)))
+print ("type(lensh) =",type(lensh))
+print ("len(seq_pairs) <= lensh?", len(seq_pairs) <= lensh)
 # determine how many commands per sh file
 if len(seq_pairs) <= lensh:
     # one command per sh file
@@ -88,7 +88,7 @@ if len(seq_pairs) <= lensh:
 else:
     # multiple commands per sh file
     ceil = math.ceil(len(seq_pairs)/lensh)
-print "ceil =",ceil
+print ("ceil =",ceil)
     
 shcount = 0
 fcount  = 0
@@ -152,7 +152,7 @@ python 01b_bwa-map_rginfo_mark_build.py %s %s %s %s %s
         shcount += 1
         fcount = 0
         text = ''''''
-print 'shcount =',shcount
+print ('shcount =',shcount)
         
 # qsub the files
 shs = fs(shtrimDIR)

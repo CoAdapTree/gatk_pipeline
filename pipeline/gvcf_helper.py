@@ -35,7 +35,7 @@ shuffle(shfiles) # so I don't have to code something in to deal with/avoid multi
 # shuffling won't be perfect, esp when len(shfiles) == <a smallish number>, but oh well
 
 # run commands until I run out of time
-print 'running gvcf_helper.py'
+print('running gvcf_helper.py')
 for s in shfiles:
     if op.exists(s):
 #         print s # so that rescheduler can find it (should print to stdout in the sh file's .out file)
@@ -43,22 +43,22 @@ for s in shfiles:
         try:
             shutil.move(s,reservation) # so that other jobs don't rewrite
         except:
-            print 'could not move shfile %s' % s
-            print 'to reservation %s' % reservation
+            print('could not move shfile %s' % s)
+            print('to reservation %s' % reservation)
             continue
-        print reservation # so that rescheduler can find it (should print to stdout in the sh file's .out file)
+        print(reservation) # so that rescheduler can find it (should print to stdout in the sh file's .out file)
         o = open(reservation,'r').readlines()
         for line in o:
             if line.startswith('gatk'):
                 cmd = line.replace('\n','')
-                print 'running cmd:'
-                print cmd
+                print('running cmd:')
+                print(cmd)
                 os.system('%s' % cmd)
                 try:
                     os.system('unlink %s' % reservation)
-                    print 'unlinking shfile %s' % reservation
+                    print('unlinking shfile %s' % reservation)
                 except OSError as e:
-                    print 'unable to unlink %s' % reservation
+                    print('unable to unlink %s' % reservation)
                     pass
                 pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
                 os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),

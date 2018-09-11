@@ -36,12 +36,12 @@ thisfile, fqdir = sys.argv
 
 
 # read in the datatable, save rginfo for later
-print 'reading datatable, getting rginfo'
+print ('reading datatable, getting rginfo')
 datatable = op.join(fqdir,'datatable.txt')
 try:
     assert op.exists(datatable)
 except AssertionError:
-    print 'the datafile is not in the necessary path: %s' % datatable
+    print ('the datafile is not in the necessary path: %s' % datatable)
     sys.exit(3)
 data    = pd.read_csv(datatable,sep='\t')
 rginfo  = {} #key=sampname vals=rginfo
@@ -59,7 +59,7 @@ for row in data.index:
     try:
         assert luni(df['ploidy']) == 1
     except AssertionError as e:
-        print "the ploidy values for some elements with pool name '%s' are not the same" % pool
+        print ("the ploidy values for some elements with pool name '%s' are not the same" % pool)
         sys.exit(1)
     if not pool in ploidy:
         ploidy[pool] = data.loc[row,'ploidy']
@@ -67,8 +67,8 @@ for row in data.index:
         try:
             assert poolref[pool] == data.loc[row,'ref']
         except AssertionError as e:
-            print "ref genome for samples in %s pool seems to have different paths in datatable.txt" % pool
-            print "samples in a pool should have the same ref genome"
+            print ("ref genome for samples in %s pool seems to have different paths in datatable.txt" % pool)
+            print ("samples in a pool should have the same ref genome")
             sys.exit(1)
     else:
         poolref[pool] = data.loc[row,'ref']
@@ -82,7 +82,7 @@ pkldump(ploidy,op.join(fqdir,'ploidy.pkl'))
 pkldump(f2pool,op.join(fqdir,'samp2pool.pkl'))
 
 # make pool dirs
-print "making pool dirs"
+print ("making pool dirs")
 pools = uni(data['pool_name'].tolist())
 pooldirs = []
 for p in pools:
@@ -93,7 +93,7 @@ for p in pools:
         pooldirs.append(DIR)
 
 # get list of files from datatable, make sure they exist in fqdir, create symlinks in /fqdir/<pool_name>/
-print 'creating symlinks'
+print ('creating symlinks')
 files = [f for f in fs(fqdir) if 'fastq' in f and 'md5' not in f]
 datafiles = data['file_name_r1'].tolist()
 [datafiles.append(x) for x in data['file_name_r2'].tolist()]
@@ -103,25 +103,25 @@ for f in datafiles:
         assert op.exists(src)
         pooldir = op.join(fqdir,f2pool[f])
         dst = op.join(pooldir,f)
-        print "creating fastq symlinks"
+        print ("creating fastq symlinks")
         if not op.exists(dst):
             os.symlink(src,dst)
         pklsrc = op.join(fqdir,'ploidy.pkl') # no need to assert 
         pkldst = op.join(pooldir,'ploidy.pkl')
-        print "creating ploidy symlink"
+        print ("creating ploidy symlink")
         if not op.exists(pkldst):
             os.symlink(pklsrc,pkldst)
         rgsrc = op.join(fqdir,'rginfo.pkl')  # no need to assert 
         rgdst = op.join(pooldir,'rginfo.pkl')
-        print "creating rginfo symlink"
+        print ("creating rginfo symlink")
         if not op.exists(rgdst):
             os.symlink(rgsrc,rgdst)
     except AssertionError as e:
-        print 'could not find %s in %s' % (f,fqdir)
+        print ('could not find %s in %s' % (f,fqdir))
         sys.exit(1)
 
 # create sh files
-print 'writing sh files'
+print ('writing sh files')
 shdir = op.join(fqdir,'shfiles')
 if not op.exists(shdir):
     os.makedirs(shdir)
@@ -150,7 +150,7 @@ python 01a_trim-fastq.py %s %s
         o.write("%s" % text)
 
 # sbatch jobs
-print 'sbatching sh files'
+print ('sbatching sh files')
 os.chdir(shdir)
 sbatch(shdir)
 
