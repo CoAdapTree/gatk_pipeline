@@ -71,62 +71,55 @@ else:
     
 scaffiles = [f for f in fs(scafdir) if f.endswith('.list')]
 for scaff in scaffiles:
-    s = "scaff%s" % scaff.split(".list")[0].split("scaff_")[1]
+    s    = "scaff%s" % scaff.split(".list")[0].split("scaff_")[1]
     filE = op.join(gvcfdir,'%s_%s.sh' % (samp,s))
+    shz  = str(tcount).zfill(3)
+    vcf  = rawvcf.replace(".g.vcf.gz","_%s.g.vcf.gz" % s)
     text = '''#!/bin/bash
-#SBATCH --time=02:59:00
-#SBATCH --nodes=1
-#SBATCH --mem=8000M
-#SBATCH --cpus-per-task=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --job-name=%s%s%s
+#SBATCH --time=11:59:00
+#SBATCH --ntasks=1
+#SBATCH --mem-per-cpu=30000M
+#SBATCH --job-name=%(s)s%(pool)s%(shz)s
 #SBATCH --export=all
-#SBATCH --output=gvcf%s_%%j.out 
+#SBATCH --output=gvcf%(shz)s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
 
 # for debugging and rescheduler
 cat $0 
-echo %s
+echo %(filE)s
 
 source $HOME/.bashrc
 module load gatk/4.0.0.0
 
 # resubmit jobs with errors
 cd $HOME/pipeline
-python rescheduler.py %s
+python rescheduler.py %(fqdir)s
 
 # fill up the queue
 cd $HOME/pipeline
-python scheduler.py %s
+python scheduler.py %(fqdir)s
 
 # call variants
-gatk HaplotypeCaller --sample-ploidy %s -R %s --genotyping-mode DISCOVERY -ERC GVCF -I %s -O %s -L %s --minimum-mapping-quality 20
+gatk HaplotypeCaller --sample-ploidy %(ploidy)s -R %(ref)s --genotyping-mode DISCOVERY -ERC GVCF -I %(dupfile)s -O %(vcf)s -L %(scaff)s --minimum-mapping-quality 20
 
 # keep running jobs until time runs out
 echo 'getting help from gvcf_helper'
 cd $HOME/pipeline
-python gvcf_helper.py %s
+python gvcf_helper.py %(fqdir)s
 
 
-''' % (s,  pool,  str(tcount).zfill(3),
-       str(tcount).zfill(3),
-       filE,
-       fqdir,
-       fqdir,
-       ploidy,  ref,  dupfile,  rawvcf.replace(".g.vcf.gz","_%s.g.vcf.gz" % s), scaff,
-       fqdir
-      )
+''' % locals()
     with open(filE,'w') as o:
         o.write("%s" % text)
     # now create a symlink in scheddir
-    dst = op.join(scheddir,op.basename(filE))
-    if not op.exists(dst):
-        os.symlink(filE,dst)
+#     dst = op.join(scheddir,op.basename(filE))
+#     if not op.exists(dst):
+#         os.symlink(filE,dst)
 
 
-# # submit to scheduler
-pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
-os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),fqdir))
+# # # submit to scheduler
+# pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
+# os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),fqdir))
 
 
 
