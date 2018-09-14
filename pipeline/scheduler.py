@@ -25,7 +25,7 @@ print("DIR=",DIR)
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
-qthresh   = 500
+qthresh   = 1000
 ###
 
 ### defs

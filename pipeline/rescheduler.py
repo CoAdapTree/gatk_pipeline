@@ -86,16 +86,23 @@ if len(outs) > 0:
 
         # look for errors in outfiles and resubmit the error-causing shfile using more mem or time
         for out in outs:
-            edited = False
             print('\nworking on %s' % out)
             with open(out,'r') as OUT:
                 o = OUT.readlines()
             # look for mem error
-            timelimit = False
-            if 'oom-kill' in o[-1] or 'error' in o[-1]:
-                for test in o[-10:]: # look for a time error in the last 10 lines of the file
+            edited = False
+            timelimit  = False
+            founderror = False
+            for line in o[-20:]: # look for an error message
+                if 'oom-kill' in line or 'error' in line:
+                    print ('found an error')
+                    founderror = True
+                    break
+            if founderror == True:
+                for test in o[-20:]: # look for a time error 
                     if 'time limit' in test.lower():
                         timelimit = True
+                        break
                 if timelimit == True:
                     # look for time error
                     edited = True
@@ -114,7 +121,7 @@ if len(outs) > 0:
                         # no need to change time this first time
                         print('leaving orginal time as-is')
                         for line in o[::-1]:
-                            if line.startswith('    java'):
+                            if line.startswith('gatk HaplotypeCaller'):
                                 vcf = line.split()[-5]
                                 trushfile = vcf2sh(vcf)
                                 linkname = op.join(DIR,op.basename(trushfile))
@@ -126,7 +133,7 @@ if len(outs) > 0:
                     else:
                         for line in o[::-1]:
                             # this was the call from the original sh file
-                            if line.startswith('gatk'):
+                            if line.startswith('gatk HaplotypeCaller'):
                                 print ('adjusting time of original sh file')
                                 vcf = line.split()[-5]
                                 trushfile = vcf2sh(vcf)
@@ -152,14 +159,14 @@ if len(outs) > 0:
                                 addlink((trushfile,linkname))
                                 
                                 break
-                else:
+                else: # there's a mem oerror
                     edited = True
                     # at t=0, all sh files have mem==8000M, so if gvcf_helper.py caused mem error, the last call needs more mem
                     ## and I dont have to figure out if its the original's call or gvcf_helper's call
                     print('due to mem limit')
                     # find the last job and resubmit with more mem
                     for line in o[::-1]:
-                        if line.startswith('    java') or line.startswith('gatk'):
+                        if line.startswith('gatk HaplotypeCaller'):
                             vcf = line.split()[-5]
                             trushfile = vcf2sh(vcf)
                             print('linked to %s' % trushfile)

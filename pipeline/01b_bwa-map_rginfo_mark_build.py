@@ -24,6 +24,8 @@ thisfile,ref,r1out,r2out,shdir,tcount = sys.argv
 ### create dirs and filenames
 bwashdir  = op.join(shdir,'bwa_shfiles')
 fqdir     = op.dirname(shdir)
+print('fqdir=',fqdir)
+print(op.join(fqdir,'rginfo.pkl'))
 rginfo    = pickle.load(open(op.join(fqdir,'rginfo.pkl'),'rb'))
 count = 0
 for samp in rginfo:
@@ -86,10 +88,9 @@ strt = str(tcount).zfill(3)
 text = '''#!/bin/bash
 #SBATCH --cpus-per-task=32
 #SBATCH --job-name=bwa%(samp)s%(strt)s
-#SBATCH --export=all
 #SBATCH --time=02:59:00
-#SBATCH --mem=30000mb
-#SBATCH --output=bwa%(strt)s_%%j.out 
+#SBATCH --mem=30000M
+#SBATCH --output=bwa%(samp)s%(strt)s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
 #SBATCH --mail-type=FAIL
 

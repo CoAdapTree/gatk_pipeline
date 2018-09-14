@@ -29,20 +29,18 @@ thisfile, rgout, fqdir, ref, tcount = sys.argv
 print ('fqdir =',fqdir)
 
 # create dirs
-rgdir = op.join(fqdir,'rg_filtered_indexed_sorted_bamfiles')
-shdir    = op.join(fqdir,'shfiles')
+pardir = op.dirname(fqdir)
+rgdir  = op.join(fqdir,'rg_filtered_indexed_sorted_bamfiles')
+shdir  = op.join(fqdir,'shfiles')
 for d in [rgdir,shdir]:
     assert op.exists(d)
-# dupdir  = op.join(fqdir,'dedup_rg_filtered_indexed_sorted_bamfiles')
 gvcfdir  = op.join(shdir,'gvcf_shfiles')
-gatkdir = op.join(fqdir,'gatkdir')
-vcfdir  = op.join(fqdir,'vcfs')
+gatkdir  = op.join(fqdir,'gatkdir')
+vcfdir   = op.join(fqdir,'vcfs')
 scheddir = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
 for d in [gvcfdir,gatkdir,vcfdir,scheddir]:
     if not op.exists(d):
         os.makedirs(d)
-#[os.remove(f) for f in fs(gvcfdir) if f.endswith('.sh')] # during development I only wanted to keep finalized shfiles
-
     
 # create filenames
 pool    = op.basename(op.dirname(op.dirname(rgout))) 
@@ -64,12 +62,13 @@ shfiles = []
 shcount = 0
 if ploidy > 2: #poolseq
     print ("this is a poolseq file")
-    scafdir = '/scratch/lindb/testdata/intervals/pooled'
+    scafdir = op.join(pardir,'intervals/pooled')
 else:
     print ("this is an individual's file")
-    scafdir = '/scratch/lindb/testdata/intervals/individual'
+    scafdir = op.join(pardir,'intervals/individual')
     
 scaffiles = [f for f in fs(scafdir) if f.endswith('.list')]
+assert len(scaffiles) > 0
 for scaff in scaffiles:
     s    = "scaff%s" % scaff.split(".list")[0].split("scaff_")[1]
     filE = op.join(gvcfdir,'%s_%s.sh' % (samp,s))
@@ -84,12 +83,12 @@ for scaff in scaffiles:
 #SBATCH --output=gvcf%(shz)s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
 
-# for debugging and rescheduler
+# for debugging 
 cat $0 
 echo %(filE)s
 
 source $HOME/.bashrc
-module load gatk/4.0.0.0
+module load gatk/4.0.8.1
 
 # resubmit jobs with errors
 cd $HOME/pipeline
@@ -112,14 +111,14 @@ python gvcf_helper.py %(fqdir)s
     with open(filE,'w') as o:
         o.write("%s" % text)
     # now create a symlink in scheddir
-#     dst = op.join(scheddir,op.basename(filE))
-#     if not op.exists(dst):
-#         os.symlink(filE,dst)
+    dst = op.join(scheddir,op.basename(filE))
+    if not op.exists(dst):
+        os.symlink(filE,dst)
 
 
-# # # submit to scheduler
-# pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
-# os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),fqdir))
+# submit to scheduler
+pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
+os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),fqdir))
 
 
 

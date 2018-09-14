@@ -36,6 +36,8 @@ thisfile, fqdir = sys.argv
 
 
 # read in the datatable, save rginfo for later
+if fqdir.endswith("/"):
+    fqdir = fqdir[:-1]
 print ('reading datatable, getting rginfo')
 datatable = op.join(fqdir,'datatable.txt')
 try:
@@ -130,10 +132,9 @@ for p in pooldirs:
     pref = poolref[pool]
     text = '''#!/bin/bash
 #SBATCH --job-name=%(pool)sstart
-#SBATCH --export=all
 #SBATCH --time=02:59:00
-#SBATCH --mem=1000mb
-#SBATCH --cpus-per-task=1
+#SBATCH --ntasks=1
+#SBATCH --mem-per-cpu=1000M
 #SBATCH --output=start%(pool)s_%%j.out
 #SBATCH --mail-user=lindb@vcu.edu
 #SBATCH --mail-type=FAIL

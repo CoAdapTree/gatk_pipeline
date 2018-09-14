@@ -94,6 +94,7 @@ shcount = 0
 fcount  = 0
 tcount  = 0
 text    = ''''''
+shfiles = []
 for s in seq_pairs:
 #     print s
     r1    = op.abspath(s[0])
@@ -132,17 +133,19 @@ python 01b_bwa-map_rginfo_mark_build.py %(ref)s %(r1out)s %(r2out)s %(shdir)s %(
         shz = str(shcount).zfill(3)
         header = '''#!/bin/bash
 #SBATCH --job-name=trim%s
-#SBATCH --export=all
 #SBATCH --time=02:59:00
-#SBATCH --mem=5000mb
+#SBATCH --mem=5000M
 #SBATCH --cpus-per-task=16
 #SBATCH --output=trim%s_%%j.out
 #SBATCH --mail-user=lindb@vcu.edu
 #SBATCH --mail-type=FAIL
 
+source $HOME/.bashrc
+
 ''' % (shz,shz)
         text = header + text
         filE = op.join(shtrimDIR,'trim_%s.sh' % shz)
+        shfiles.append(filE)
         with open(filE,'w') as o:
             o.write("%s" % text)
         shcount += 1
@@ -151,9 +154,8 @@ python 01b_bwa-map_rginfo_mark_build.py %(ref)s %(r1out)s %(r2out)s %(shdir)s %(
 print ('shcount =',shcount)
         
 # qsub the files
-shs = fs(shtrimDIR)
 os.chdir(shtrimDIR) # want sbatch outfiles in same folder as sh file
-for f in shs:
+for f in shfiles:
 ##     !sbatch $f # jupyter es el mejor
     os.system('sbatch %s' % f)
 #####
