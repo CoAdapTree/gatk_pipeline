@@ -59,7 +59,7 @@ gzfiles = [f for f in fs(fqdir) if 'R1' in f]
 lgz     = len(gzfiles)
 # !echo 'found '$lgz' gz files in '$fqdir >> $fqdir'/messages/msgs.txt' # only works in jupyter notebooks :'(
 # instead of ^, do (lame/boring):
-text = 'found %s R1 fastq.gz files in %s' % (lgz, fqdir)
+text = 'found %(lgz)s R1 fastq.gz files in %(fqdir)s' % locals() #(lgz, fqdir)
 print (text)
 with open(mfile,'w') as o:
     o.write("%s\n" % text)
@@ -102,7 +102,7 @@ for s in seq_pairs:
     else:
         assert r1.endswith('fastq.gz')
         r1out = op.join(trimDIR,op.basename(r1).replace('.fastq.gz','_trimmed.fastq'))
-    r2    = op.abspath(s[1])
+    r2 = op.abspath(s[1])
     if r2.endswith("fastq"):
         r2out = op.join(trimDIR,op.basename(r2).replace('.fastq','_trimmed.fastq'))
     else:
@@ -111,22 +111,18 @@ for s in seq_pairs:
     html = r1out.replace("R1","").replace(".fastq","_R1_R2_stats")
     json = r1out.replace("R1","").replace(".fastq","_R1_R2")
     logfile = r1out.replace("R1","").replace(".fastq","_R1_R2_stats.log")
-    cmd  = '''fastp -i %s -o %s -I %s -O %s -g --cut_window_size 5 --cut_mean_quality 30 --qualified_quality_phred 30 --unqualified_percent_limit 20 --n_base_limit 5 --length_required 75 -h %s.html --cut_by_quality3 --thread 16 --json %s.json --adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT > %s
+    shz  = str(tcount).zfill(3)
+    cmd  = '''fastp -i %(r1)s -o %(r1out)s -I %(r2)s -O %(r2out)s -g --cut_window_size 5 --cut_mean_quality 30 --qualified_quality_phred 30 --unqualified_percent_limit 20 --n_base_limit 5 --length_required 75 -h %(html)s.html --cut_by_quality3 --thread 16 --json %(json)s.json --adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT > %(logfile)s
 
 
 cd $HOME/pipeline
 # once finished, map using bwa mem 
-python 01b_bwa-map_rginfo_mark_build.py %s %s %s %s %s           
-''' % (r1  , r1out,
-       r2  , r2out,
-       html, json ,  logfile,
-       ref , r1out,  r2out  , shdir, str(tcount).zfill(3)
-      )
-# (r1,  r1out,
-#        r2,  r2out,
-#        r1out.replace("R1_trimmed.fastq","R1_R2_trimmed_stats"),
-#        r1out.replace("R1_trimmed.fastq","R1_R2_trimmed"),
-#        ref,  r1out,  r2out,  shdir,  str(tcount).zfill(3)
+python 01b_bwa-map_rginfo_mark_build.py %(ref)s %(r1out)s %(r2out)s %(shdir)s %(shz)s           
+''' % locals()
+#       (r1  , r1out,
+#        r2  , r2out,
+#        html, json ,  logfile,
+#        ref , r1out,  r2out  , shdir, str(tcount).zfill(3)
 #       )
     text = text + cmd
     

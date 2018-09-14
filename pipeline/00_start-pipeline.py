@@ -127,24 +127,22 @@ if not op.exists(shdir):
     os.makedirs(shdir)
 for p in pooldirs:
     pool = op.basename(p)
+    pref = poolref[pool]
     text = '''#!/bin/bash
-#SBATCH --job-name=%sstart
+#SBATCH --job-name=%(pool)sstart
 #SBATCH --export=all
 #SBATCH --time=02:59:00
 #SBATCH --mem=1000mb
 #SBATCH --cpus-per-task=1
-#SBATCH --output=start%s_%%j.out
+#SBATCH --output=start%(pool)s_%%j.out
 #SBATCH --mail-user=lindb@vcu.edu
 #SBATCH --mail-type=FAIL
 
 source $HOME/.bashrc
 cd $HOME/pipeline
 
-python 01a_trim-fastq.py %s %s
-''' % (pool,
-       pool,
-       p, poolref[pool]
-      )
+python 01a_trim-fastq.py %(p)s %(pref)s
+''' % locals()
     filE = op.join(shdir,"%s.sh" % pool)
     with open(filE,'w') as o:
         o.write("%s" % text)
