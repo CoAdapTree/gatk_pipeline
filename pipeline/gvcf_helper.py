@@ -34,10 +34,12 @@ workingdir = op.join(DIR,'workingdir')
 if not op.exists(workingdir):
     os.makedirs(workingdir)
     
-# get job info and current memory limit
-jobid  = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
-jobmem = os.popen("sacct -j %s | grep 'lindb'" % jobid).read()
-jobmem = int([x for x in jobmem.split() if 'mem' in x][0].split(",")[1].split('=')[1].replace("M",""))
+# get job info and current memory/time limits
+jobid    = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
+jobinfo  = os.popen("sacct -j %s | grep 'lindb'" % jobid).read()
+jobmem   = int([x for x in jobinfo.split() if 'mem' in x][0].split(",")[1].split('=')[1].replace("M",""))
+timeinfo = os.popen("sacct -j %s --format Timelimit" % jobid).read()
+jobtime  = int(timeinfo.split()[-1].split(':')[0])
 
 # get list of remaining gatk calls
 shfiles = [f for f in fs(DIR) if f.endswith('.sh')]
@@ -46,7 +48,7 @@ shuffle(shfiles)
 # run commands until I run out of time
 print('running gvcf_helper.py')
 for s in shfiles:
-    print (s)
+#     print (s)
     if op.exists(s):
         reservation = op.join(workingdir,op.basename(s))
         try:
@@ -66,6 +68,13 @@ for s in shfiles:
             print ('file exceeds mem limit')
             shutil.move(reservation,s) # put the job back in the queue
             continue
+        # only continue to run jobs that might fit in same time allocation
+        TIME = int([x for x in o if 'time' in x][0].split("=")[1].split(':')[0])
+        if TIME > jobtime:
+            print ('file exceeds necessary time')
+            shutil.move(reservation,s)
+            continue
+        
         
         print ('file is ok to proceed')
         for line in o:
@@ -85,6 +94,7 @@ for s in shfiles:
                                             fqdir))
                 os.system('python %s %s' % (op.join(pipedir,'rescheduler.py'),
                                             fqdir))
+                
                 break
 
 

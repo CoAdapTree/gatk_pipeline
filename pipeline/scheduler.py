@@ -25,7 +25,7 @@ print("DIR=",DIR)
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
-qthresh   = 50
+qthresh   = 500
 ###
 
 ### defs
@@ -61,7 +61,7 @@ def main():
         print('scheduler not running')
         print('queue length less than thresh')
         nsbatch = qthresh - x # how many should I submit?
-        files   = [f for f in fs(DIR) if not 'scheduler.txt' in f and '.out' not in f][0:nsbatch]
+        files   = [f for f in fs(DIR) if not 'scheduler.txt' in f and '.out' not in f and 'workingdir' not in f][0:nsbatch]
         if len(files) > 0:
             print('submitting %s jobs' % str(nsbatch))
             sbatchjobs(files)

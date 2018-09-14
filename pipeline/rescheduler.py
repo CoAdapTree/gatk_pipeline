@@ -30,7 +30,7 @@ DIR = op.join(dname,'shfiles/gvcf_shfiles') # real deal
 os.chdir(DIR)
 outs = [f for f in fs(DIR) if f.endswith('out') and not 'checked' in f]
 rescheduler = op.join(DIR,'rescheduler.txt')
-samp2pool = pickle.load(open(op.join(dname,'samp2pool.pkl')))
+samp2pool = pickle.load(open(op.join(dname,'samp2pool.pkl'),'rb'))
 def vcf2sh(v):
     pooldir  = op.dirname(op.dirname(v))
     gvcfdir  = op.join(pooldir,'shfiles/gvcf_shfiles')
@@ -59,14 +59,14 @@ def addlink(args):
 
 # identify outs that aren't running
 sq = os.popen("squeue -u lindb | grep 'R 2'").read().split("\n")
-print(sq)
+#print(sq)
 pids = []
 for s in sq:
     if not s == '':
     #     print s
         pid = s.split()[0]
         pids.append(pid)
-print(pids)
+#print(pids)
 runs = []
 for out in outs:
     pid = op.basename(out).split(".out")[0].split("_")[1]
@@ -125,7 +125,9 @@ if len(outs) > 0:
                                 break
                     else:
                         for line in o[::-1]:
-                            if line.startswith('    java'):
+                            # this was the call from the original sh file
+                            if line.startswith('gatk'):
+                                print ('adjusting time of original sh file')
                                 vcf = line.split()[-5]
                                 trushfile = vcf2sh(vcf)
 
@@ -157,7 +159,7 @@ if len(outs) > 0:
                     print('due to mem limit')
                     # find the last job and resubmit with more mem
                     for line in o[::-1]:
-                        if line.startswith('    java'):
+                        if line.startswith('    java') or line.startswith('gatk'):
                             vcf = line.split()[-5]
                             trushfile = vcf2sh(vcf)
                             print('linked to %s' % trushfile)
