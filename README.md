@@ -7,7 +7,7 @@
 1. install bwa and export path in `$HOME/.bashrc`
 1. install samtools with anaconda (after activating environment: `conda install -c bioconda samtools`)
 1. install picardtools with anaconda (after activating env: `conda install -c bioconda picard`)
-1. install gatk or make sure there is a module (eg `module load gatk/4.0.0.0`)
+1. install gatk or make sure there is a module (eg `module load gatk/4.0.8.1`)
 1. copy the following into your `$HOME/.bashrc` file so that the `def-someuser` reflects your compute canada account
     ```
     export SLURM_ACCOUNT=def-someuser  
