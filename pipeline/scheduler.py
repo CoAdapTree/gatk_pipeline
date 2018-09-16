@@ -7,6 +7,8 @@ import os
 import sys
 from os import path as op
 from os import listdir
+import time
+import random
 def ls(DIR):
     return sorted([f for f in listdir(DIR)])
 def fs (DIR):
@@ -25,7 +27,7 @@ print("DIR=",DIR)
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
-qthresh   = 1000
+qthresh   = 50
 ###
 
 ### defs
@@ -44,19 +46,22 @@ def startscheduler(scheduler):
         o.write("scheduler")
 def sbatchjobs(files):
     for f in files:
+        realp = op.realpath(f) # find the file to which the symlink file is linked
         if op.exists(f):
-            os.system('sbatch %s' % f)     # maybe there will be dup sbatches? oh well hopefully not
-            # print f
+            # print (f)
             try:
-                os.system('unlink %s' % f) # remove the symlink from the scheddir
+                os.unlink(f) # first remove the symlink from the scheddir
                 print('unlinked %s' % f)
-            except OSError as e:           # unless another scheduler has done so (shouldnt be the case)
+            except:          # unless gvcf_helper has already done so (shouldnt be the case, but maybe with high qthresh)
                 print('unable to unlink symlink %f' % f)
-                pass
+                continue
+            os.system('sbatch %s' % realp) # then sbatch the real sh file if & only if the symlink was successfully unlinked    
+            
 def main():
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
     x = sq("squeue -u lindb | grep 'lindb' | wc -l") # number of jobs in the queue
+    print ('queue length = ',x)
     if x < qthresh: # if there is room in the queue
         print('scheduler not running')
         print('queue length less than thresh')
@@ -73,6 +78,7 @@ def main():
 ###
 
 # main
+time.sleep(random.random())  # just in case schedulers start at v similar times
 if not op.exists(scheduler): # if scheduler isn't running
     main()
 else:
