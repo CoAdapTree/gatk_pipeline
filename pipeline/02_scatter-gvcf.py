@@ -77,10 +77,10 @@ for scaff in scaffiles:
     text = '''#!/bin/bash
 #SBATCH --time=11:59:00
 #SBATCH --ntasks=1
-#SBATCH --mem-per-cpu=30000M
-#SBATCH --job-name=%(s)s%(pool)s%(shz)s
+#SBATCH --mem-per-cpu=20000M
+#SBATCH --job-name=%(s)s%(samp)s%(shz)s
 #SBATCH --export=all
-#SBATCH --output=gvcf%(shz)s_%%j.out 
+#SBATCH --output=gvcf%(shz)s_%(samp)s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
 
 # for debugging 
