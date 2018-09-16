@@ -41,9 +41,9 @@ def vcf2sh(v):
     return shfile
 def unlink(linkname):
     try:
-        os.system('unlink %s' % linkname)
+        os.unlink(linkname)
         print('unlinked %s' % linkname)
-    except OSError as e:
+    except:
         print('no symlink to unlink: %s' % linkname)
         pass
 def addlink(args):
@@ -77,15 +77,27 @@ outs = runs
 print('running rescheduler.py')
 createdrescheduler = False
 if len(outs) > 0:
-    print('outs =',outs)
+#     print('outs =',outs)
     if not op.exists(rescheduler):
         # reserve the rescheduler
-        createdrescheduler = True
         with open(rescheduler,'w') as o:
             o.write("rescheduler")
+        createdrescheduler = True
 
         # look for errors in outfiles and resubmit the error-causing shfile using more mem or time
         for out in outs:
+            #check again to see if job is running
+            sq = os.popen("squeue -u lindb | grep 'R 2'").read().split("\n")
+            pids = []
+            for s in sq:
+                if not s == '':
+                #     print s
+                    pid = s.split()[0]
+                    pids.append(pid)
+            pid = op.basename(out).split(".out")[0].split("_")[1]
+            if pid in pids:
+                continue
+                        
             print('\nworking on %s' % out)
             with open(out,'r') as OUT:
                 o = OUT.readlines()
@@ -93,6 +105,7 @@ if len(outs) > 0:
             edited = False
             timelimit  = False
             founderror = False
+            cancelled = False
             for line in o[-20:]: # look for an error message
                 if 'oom-kill' in line or 'error' in line:
                     print ('found an error')
@@ -100,8 +113,10 @@ if len(outs) > 0:
                     break
             if founderror == True:
                 for test in o[-20:]: # look for a time error 
-                    if 'time limit' in test.lower():
+                    if 'time limit' in test.lower() or 'cancelled' in test.lower():
                         timelimit = True
+                        if 'cancelled' in test.lower():
+                            cancelled = True
                         break
                 if timelimit == True:
                     # look for time error
@@ -117,9 +132,10 @@ if len(outs) > 0:
                             helped = True
                             print('helped by gvcf_helper =',helped)
                             break
-                    if helped == True: # if the job ended on a call from gvcf_helper.py
+                    if helped == True or cancelled == True: # if the job ended on a call from gvcf_helper.py or was cancelled
                         # no need to change time this first time
                         print('leaving orginal time as-is')
+                        print('cancelled =',cancelled)
                         for line in o[::-1]:
                             if line.startswith('gatk HaplotypeCaller'):
                                 vcf = line.split()[-5]
@@ -167,6 +183,7 @@ if len(outs) > 0:
                     # find the last job and resubmit with more mem
                     for line in o[::-1]:
                         if line.startswith('gatk HaplotypeCaller'):
+                            print('adjusting mem limit of: %s' % trushfile)
                             vcf = line.split()[-5]
                             trushfile = vcf2sh(vcf)
                             print('linked to %s' % trushfile)
@@ -188,8 +205,6 @@ if len(outs) > 0:
                                 print('increasing mem to 120G')
                             with open(trushfile,'w') as o:
                                 o.write("%s" % text)
-                            print('sbatching due to mem limit: %s' % trushfile)
-                            
                             
                             # add job back to the queue  
                             linkname = op.join(DIR,op.basename(trushfile))
@@ -216,6 +231,6 @@ if createdrescheduler == True:
     try:
         os.remove(rescheduler)
         print('removed rescheduler')
-    except OSError as e:
+    except:
         print('could not remove rescheduler')
         pass  
