@@ -1,5 +1,5 @@
 ### FIX
-# at some point, have the jobID/mem as an input arg instead of script
+# at some point, have the jobID/mem as an input arg instead of scripted
 ###
 
 ###
@@ -47,54 +47,58 @@ shuffle(shfiles)
 
 # run commands until I run out of time
 os.system('echo running gvcf_helper.py')
-for s in shfiles:
-#     print (s)
-    if op.exists(s):
-        reservation = op.join(workingdir,op.basename(s))
-        try:
-            shutil.move(s,reservation) # so that other jobs don't rewrite
-        except:
-            os.system('echo could not move shfile %s' % s)
-            os.system('echo to reservation %s' % reservation)
-            continue
-        os.system('echo %s' % reservation)
-        with open(reservation,'r') as O:
-            o = O.readlines()
-#         o = open(reservation,'r').readlines()
-        
-        # only continue to run jobs that fit in the same memory allocation (dont waste resources if its going to fail)
-        mem = int([x for x in o if 'mem' in x][0].split("=")[1].replace("M\n",""))
-        if mem > jobmem:
-            os.system('echo file exceeds mem limit')
-            shutil.move(reservation,s) # put the job back in the queue
-            continue
-        # only continue to run jobs that might fit in same time allocation
-        TIME = int([x for x in o if 'time' in x][0].split("=")[1].split(':')[0])
-        if TIME > jobtime:
-            os.system('echo file exceeds necessary time')
-            shutil.move(reservation,s)
-            continue
-        
-        
-        os.system('echo file is ok to proceed')
-        for line in o:
-            if line.startswith('gatk'):
-                cmd = line.replace('\n','')
-                os.system('echo running cmd:')
-                os.system('echo %s' % cmd)
-                os.system('%s' % cmd)
-                try:
-                    os.system('unlink %s' % reservation)
-                    os.system('echo unlinking shfile %s' % reservation)
-                except OSError as e:
-                    os.system('echo unable to unlink %s' % reservation)
-                    pass
-                pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
-                os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),
-                                            fqdir))
-                os.system('python %s %s' % (op.join(pipedir,'rescheduler.py'),
-                                            fqdir))
-                
-                break
+if len(shfiles) > 0:
+    for s in shfiles:
+    #     print (s)
+        if op.exists(s):
+            reservation = op.join(workingdir,op.basename(s))
+            try:
+                shutil.move(s,reservation) # so that other jobs don't rewrite
+            except:
+                os.system('echo could not move shfile %s' % s)
+                os.system('echo to reservation %s' % reservation)
+                continue
+            os.system('echo %s' % reservation)
+            with open(reservation,'r') as O:
+                o = O.readlines()
+
+            # only continue to run jobs that fit in the same memory allocation (dont waste resources if its going to fail)
+            mem = int([x for x in o if 'mem' in x][0].split("=")[1].replace("M\n",""))
+            if mem > jobmem:
+                os.system('echo file exceeds mem limit')
+                shutil.move(reservation,s) # put the job back in the queue
+                continue
+            # only continue to run jobs that might fit in same time allocation
+            TIME = int([x for x in o if 'time' in x][0].split("=")[1].split(':')[0])
+            if TIME > jobtime:
+                os.system('echo file exceeds necessary time')
+                shutil.move(reservation,s)
+                continue
 
 
+            os.system('echo file is ok to proceed')
+            for line in o:
+                if line.startswith('gatk'):
+                    cmd = line.replace('\n','')
+                    os.system('echo running cmd:')
+                    os.system('echo %s' % cmd)
+                    os.system('%s' % cmd)
+                    try:
+                        os.unlink(reservation)
+                        os.system('echo unlinked shfile %s' % reservation)
+                    except:
+                        os.system('echo unable to unlink %s' % reservation)
+                        pass
+                    pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
+                    os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),
+                                                fqdir))
+                    os.system('python %s %s' % (op.join(pipedir,'rescheduler.py'),
+                                                fqdir))
+
+                    break
+else:
+    os.system('echo no files to help')
+    
+    
+    
+    
