@@ -1,5 +1,5 @@
 ### usage
-# python 03_combine-gvcfs.py /path/to/pool/fastqfolder/ /path/to/ref.fa sampname
+# python 03_combine-gvcfs.py /path/to/parentdir/used/in/00_start-pipeline/command 
 ### 
 
 
@@ -33,12 +33,14 @@ pools = uni(list(samp2pool.values()))
 samps = list(rginfo.keys())
 ###
 
+# get a list of subdirectory pool dirs created earlier in pipeline
 pooldirs = []
 for p in pools:
     pooldir = op.join(parentdir,p)
     assert op.exists(pooldir)
     pooldirs.append(pooldir)
 
+# create an sh file for each sample to combine gvcf files
 shfiles = []
 for pdir in pooldirs:
     pool    = op.basename(pdir)
@@ -82,7 +84,7 @@ gatk CombineGVCFs -R %(ref)s %(variantcmd)s -O %(outfile)s
         shfiles.append(filE)
         print(filE)
         
-
+# sbatch the shfiles
 for s in shfiles:
     os.chdir(op.dirname(s))
     os.system('sbatch %s' % s)
