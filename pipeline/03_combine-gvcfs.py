@@ -70,7 +70,7 @@ for pdir in pooldirs:
 #SBATCH --output=combine-gvcf_%(samp)s_%%j.out 
 
 # for debugging
-echo $0
+cat $0
 echo %(filE)s
 
 source $HOME/.bashrc
