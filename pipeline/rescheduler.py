@@ -28,7 +28,7 @@ DIR = op.join(dname,'shfiles/gvcf_shfiles') # real deal
 #DIR = op.join(op.dname(fqdir),'shfiles/') # practice
 #print DIR
 os.chdir(DIR)
-outs = [f for f in fs(DIR) if f.endswith('out') and not 'checked' in f]
+outs = [f for f in fs(DIR) if f.endswith('out') and 'checked' not in f and 'swp' not in f]
 rescheduler = op.join(DIR,'rescheduler.txt')
 samp2pool = pickle.load(open(op.join(dname,'samp2pool.pkl'),'rb'))
 def vcf2sh(v):
@@ -107,13 +107,14 @@ if len(outs) > 0:
             founderror = False
             cancelled = False
             for line in o[-20:]: # look for an error message
-                if 'oom-kill' in line or 'error' in line:
-                    print ('found an error')
-                    founderror = True
-                    break
+                if 'oom-kill' in line  or 'error' in line:
+                    if not 'no mem or time errors found in' in line:
+                        print ('found an error')
+                        founderror = True
+                        break
             if founderror == True:
                 for test in o[-20:]: # look for a time error 
-                    if 'time limit' in test.lower() or 'cancelled' in test.lower():
+                    if 'time limit' or 'cancelled' in test.lower():
                         timelimit = True
                         if 'cancelled' in test.lower():
                             cancelled = True
@@ -183,9 +184,9 @@ if len(outs) > 0:
                     # find the last job and resubmit with more mem
                     for line in o[::-1]:
                         if line.startswith('gatk HaplotypeCaller'):
-                            print('adjusting mem limit of: %s' % trushfile)
                             vcf = line.split()[-5]
                             trushfile = vcf2sh(vcf)
+                            print('adjusting mem limit of: %s' % trushfile)
                             print('linked to %s' % trushfile)
                             sh = open(trushfile).read()
                             if '8000M' in sh:

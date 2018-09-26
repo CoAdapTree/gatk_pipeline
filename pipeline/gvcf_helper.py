@@ -36,10 +36,15 @@ if not op.exists(workingdir):
     
 # get job info and current memory/time limits
 jobid    = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
+#print('jobid=',jobid)
 jobinfo  = os.popen("sacct -j %s | grep 'lindb'" % jobid).read()
+#print('jobinfo=',jobinfo)
 jobmem   = int([x for x in jobinfo.split() if 'mem' in x][0].split(",")[1].split('=')[1].replace("M",""))
+#print('jobmem=',jobmem)
 timeinfo = os.popen("sacct -j %s --format Timelimit" % jobid).read()
+#print('timeinfo=',timeinfo)
 jobtime  = int(timeinfo.split()[-1].split(':')[0])
+#print('jobtime=',jobtime)
 
 # get list of remaining gatk calls
 shfiles = [f for f in fs(DIR) if f.endswith('.sh')]
@@ -50,8 +55,8 @@ os.system('echo running gvcf_helper.py')
 if len(shfiles) > 0:
     for s in shfiles:
     #     print (s)
+        reservation = op.join(workingdir,op.basename(s))
         if op.exists(s):
-            reservation = op.join(workingdir,op.basename(s))
             try:
                 shutil.move(s,reservation) # so that other jobs don't rewrite
             except:
@@ -59,6 +64,7 @@ if len(shfiles) > 0:
                 os.system('echo to reservation %s' % reservation)
                 continue
             os.system('echo %s' % reservation)
+            
             with open(reservation,'r') as O:
                 o = O.readlines()
 
@@ -90,9 +96,9 @@ if len(shfiles) > 0:
                         os.system('echo unable to unlink %s' % reservation)
                         pass
                     pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
-                    os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),
-                                                fqdir))
                     os.system('python %s %s' % (op.join(pipedir,'rescheduler.py'),
+                                                fqdir))
+                    os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),
                                                 fqdir))
 
                     break

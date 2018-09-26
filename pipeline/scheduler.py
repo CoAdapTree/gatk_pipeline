@@ -20,14 +20,14 @@ thisfile, fqdir = sys.argv
 ###
 
 ### reqs
-if fqdir.endswith("/"): #sometimes I run from command line, which appends / which screws up op.dirname()
+if fqdir.endswith("/"): #sometimes I run the scheduler from the command line, which appends / which screws up op.dirname()
     fqdir = fqdir[:-1]
 DIR       = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
 print("DIR=",DIR)
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
-qthresh   = 50
+qthresh   = 500
 ###
 
 ### defs
@@ -57,7 +57,7 @@ def sbatchjobs(files):
                 continue
             os.system('sbatch %s' % realp) # then sbatch the real sh file if & only if the symlink was successfully unlinked    
             
-def main():
+def main(DIR):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
     x = sq("squeue -u lindb | grep 'lindb' | wc -l") # number of jobs in the queue
@@ -68,7 +68,8 @@ def main():
         nsbatch = qthresh - x # how many should I submit?
         files   = [f for f in fs(DIR) if not 'scheduler.txt' in f and '.out' not in f and 'workingdir' not in f][0:nsbatch]
         if len(files) > 0:
-            print('submitting %s jobs' % str(nsbatch))
+            print('submitting %s jobs' % str(len(files)))
+            print(files)
             sbatchjobs(files)
         else:
             print('no files to sbatch')
@@ -80,6 +81,6 @@ def main():
 # main
 time.sleep(random.random())  # just in case schedulers start at v similar times
 if not op.exists(scheduler): # if scheduler isn't running
-    main()
+    main(DIR)
 else:
     print('scheduler was running')
