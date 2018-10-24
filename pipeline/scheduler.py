@@ -27,7 +27,7 @@ print("DIR=",DIR)
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
-qthresh   = 500
+qthresh   = 700 
 ###
 
 ### defs
@@ -43,7 +43,9 @@ def delsched(scheduler):
         pass
 def startscheduler(scheduler):
     with open(scheduler,'w') as o:
-        o.write("scheduler")
+        # after creating the file, write job id in case i want to cancel process
+        jobid = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
+        o.write("scheduler id = %s" % jobid)
 def sbatchjobs(files):
     for f in files:
         realp = op.realpath(f) # find the file to which the symlink file is linked
@@ -66,7 +68,9 @@ def main(DIR):
         print('scheduler not running')
         print('queue length less than thresh')
         nsbatch = qthresh - x # how many should I submit?
-        files   = [f for f in fs(DIR) if not 'scheduler.txt' in f and '.out' not in f and 'workingdir' not in f][0:nsbatch]
+        print ('nsbatch =',nsbatch)
+        print (len(fs(DIR)))
+        files = [f for f in fs(DIR) if 'scheduler.txt' not in f and '.out' not in f and 'workingdir' not in f][0:nsbatch]
         if len(files) > 0:
             print('submitting %s jobs' % str(len(files)))
             print(files)
@@ -79,7 +83,7 @@ def main(DIR):
 ###
 
 # main
-time.sleep(random.random())  # just in case schedulers start at v similar times
+time.sleep(random.random())  # just in case the very first instances of scheduler.py start at v similar times
 if not op.exists(scheduler): # if scheduler isn't running
     main(DIR)
 else:

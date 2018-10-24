@@ -15,6 +15,7 @@ import os
 from os import path as op
 from os import listdir as ls
 import math
+import time
 def fs(DIR):
     return sorted([op.join(DIR,f) for f in ls(DIR)])
 os.system('source $HOME/.bashrc')
@@ -158,4 +159,5 @@ os.chdir(shtrimDIR) # want sbatch outfiles in same folder as sh file
 for f in shfiles:
 ##     !sbatch $f # jupyter es el mejor
     os.system('sbatch %s' % f)
+    time.sleep(2)
 #####

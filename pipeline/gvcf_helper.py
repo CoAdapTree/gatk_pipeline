@@ -27,7 +27,7 @@ def fs (DIR):
 thisfile, fqdir = sys.argv
 ###
 
-os.system('source $HOME/.bashrc')
+# os.system('source $HOME/.bashrc')
 DIR = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
 os.chdir(DIR)
 workingdir = op.join(DIR,'workingdir')

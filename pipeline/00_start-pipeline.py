@@ -12,7 +12,8 @@ from os import path as op
 from os import listdir as ls
 import pickle
 import math
-import math
+import time
+
 def fs(DIR):
     return sorted([op.join(DIR,f) for f in ls(DIR)])
 def sbatch(DIR):
@@ -20,6 +21,7 @@ def sbatch(DIR):
     files = [f for f in fs(DIR) if '.sh' in f]
     for f in files:
         os.system('sbatch %s' % f)
+        time.sleep(2)
 def pkldump(obj,f):
     with open(f,'wb') as o:
         pickle.dump(obj,o,protocol=pickle.HIGHEST_PROTOCOL)
