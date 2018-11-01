@@ -1,7 +1,7 @@
 # GATK individual and poolseq pipeline
 -----
 ## Assumed requirements
-1. install an anaconda (not miniconda) environment with python 3.7 (eg: `conda create -n py3 python=3.7)`)
+1. install an anaconda (not miniconda) environment with python 3.7 (eg: `conda create -n py3 python=3.7`)
     1. export anaconda path in `$HOME/.bashrc` (this should automatically be done when installing anaconda)
     1. source anaconda env within `$HOME/.bashrc` on the last line of the file (`source activate py3`)
 1. install bwa and export path in `$HOME/.bashrc`
