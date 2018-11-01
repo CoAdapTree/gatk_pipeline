@@ -67,9 +67,10 @@ shfiles = []
 for pool in poolfiles:
     for f in sorted(poolfiles[pool]):
         #no need to combine files by scaff, just create symlinks
+        scaff    = op.basename(f).split("_scaff")[-1].replace(".g.vcf.gz","")
         combfile = op.join(outdir,'%s--%s_combined.vcf.gz' % (pool,scaff))
         tbifile  = f.replace(".gz",".gz.tbi")
-        tbilink  = op.join(outdir,op.basename(tbifile))
+        tbilink  = combfile.replace(".gz",".gz.tbi")
         try:
             os.symlink(f,combfile)
             os.symlink(tbifile,tbilink)

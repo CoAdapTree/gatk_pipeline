@@ -116,7 +116,8 @@ gatk SelectVariants -R %(ref)s -V %(gfile)s --select-type-to-include SNP -O %(sn
                 f = groups[scaff][0]
                 combfile = op.join(outdir,'%s--%s_combined.vcf.gz' % (pools,scaff))
                 tbi = f.replace(".gz",".gz.tbi")
-                tbilink = op.join(outdir,op.basename(tbi))
+#                 tbilink = op.join(outdir,op.basename(tbi))
+                tbilink = combfile.replace(".gz",".gz.tbi")
                 try:
                     if not op.exists(combfile):
                         os.symlink(f,combfile)
