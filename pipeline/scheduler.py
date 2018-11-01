@@ -63,7 +63,7 @@ def sbatchjobs(files):
 def main(DIR):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
-    x = sq("squeue -u %s | grep '%s' | wc -l" % user) # number of jobs in the queue
+    x = sq("squeue -u %(user)s | grep '%(user)s' | wc -l" % globals()) # number of jobs in the queue
     print ('queue length = ',x)
     if x < qthresh: # if there is room in the queue
         print('scheduler not running')
