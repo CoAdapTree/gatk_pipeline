@@ -28,6 +28,7 @@ assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
 qthresh   = 700 
+user = os.popen("echo $USER").read().replace("\n","")
 ###
 
 ### defs
@@ -62,7 +63,7 @@ def sbatchjobs(files):
 def main(DIR):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
-    x = sq("squeue -u $USER | grep '$USER' | wc -l") # number of jobs in the queue
+    x = sq("squeue -u %s | grep '%s' | wc -l" % user) # number of jobs in the queue
     print ('queue length = ',x)
     if x < qthresh: # if there is room in the queue
         print('scheduler not running')
