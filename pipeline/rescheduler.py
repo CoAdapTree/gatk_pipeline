@@ -150,7 +150,14 @@ if len(outs) > 0:
                                 
                                 # add job back to the queue 
                                 addlink((trushfile,linkname))
-
+                                
+                                # remove worker from workingdir
+                                workingdir = op.join(DIR,'workingdir')
+                                worker = [f for f in fs(workingdir) if op.basename(trushfile) in f][0]
+                                try:
+                                    os.unlink(worker)
+                                except:
+                                    print('could not unlink worker: %s' % worker)
                                 break
                     else:
                         for line in o[::-1]:
@@ -175,7 +182,7 @@ if len(outs) > 0:
                                     text = sh.replace('23:59:00','7-00:00:00')
                                     os.system('echo extending time to 7 days')
                                 elif '14:30:00' in sh:
-                                    text = sh.replace('14:30:00','7-00:00:00')
+                                    text = sh.replace('7-00:00:00','14-00:00:00')
                                     os.system('echo replacing 14-hour time with 7 days')
                                 else:
                                     os.system('echo cound not find replacement')
@@ -236,6 +243,7 @@ if len(outs) > 0:
             except OSError as e:
                 os.system('echo could not move outfile to noerror.out: %s' % out)
                 pass
+            
     else:
         os.system('echo rescheduler was running')
 else:

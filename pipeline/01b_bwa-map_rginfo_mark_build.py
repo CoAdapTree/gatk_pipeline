@@ -87,14 +87,17 @@ strt = str(tcount).zfill(3)
 # send it off
 text = '''#!/bin/bash
 #SBATCH --cpus-per-task=32
-#SBATCH --job-name=bwa%(samp)s%(strt)s
+#SBATCH --job-name=bwa_%(samp)s
 #SBATCH --time=02:59:00
 #SBATCH --mem=30000M
-#SBATCH --output=bwa%(samp)s%(strt)s_%%j.out 
+#SBATCH --output=bwa_%(samp)s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
 #SBATCH --mail-type=FAIL
 
 source $HOME/.bashrc
+module load bwa/0.7.17
+module load samtools/1.9
+module load picard/2.18.9
 
 # map, sam to bam, sort by coordinate, index
 bwa mem -t 32 -M %(ref)s %(r1out)s %(r2out)s > %(samfile)s
@@ -107,14 +110,14 @@ samtools view -@ 32 -q 20 -f 0x0002 -F 0x0004 -F 0x0008 -b %(sortfile)s > %(filt
 samtools index %(filtfile)s
 
 # add rginfo
-picard AddOrReplaceReadGroups RGID=%(rgid)s RGLB=%(rglb)s RGPL=%(rgpl)s RGPU=%(rgpu)s RGSM=%(rgsm)s I=%(filtfile)s O=%(rgfile)s
+java -jar $EBROOTPICARD/picard.jar AddOrReplaceReadGroups RGID=%(rgid)s RGLB=%(rglb)s RGPL=%(rgpl)s RGPU=%(rgpu)s RGSM=%(rgsm)s I=%(filtfile)s O=%(rgfile)s
 samtools index %(rgfile)s
 
 # remove dups
-picard MarkDuplicates I=%(rgfile)s O=%(dupfile)s M=%(dupstat)s VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=true
+java -jar $EBROOTPICARD/picard.jar MarkDuplicates I=%(rgfile)s O=%(dupfile)s M=%(dupstat)s VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=true
 
 # Build bam index for GATK
-picard BuildBamIndex I=%(dupfile)s
+java -jar $EBROOTPICARD/picard.jar BuildBamIndex I=%(dupfile)s
 
 # call GVCF
 cd $HOME/pipeline

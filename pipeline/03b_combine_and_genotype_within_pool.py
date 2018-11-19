@@ -6,6 +6,10 @@
 # instead of calling snps when combining some of our pools, call snps for indiviual pools
 ###
 
+### WARN
+# len(poolfiles[pool]) is assumed to be 1000
+###
+
 ### imports
 import sys
 import os
@@ -64,34 +68,36 @@ for d in pooldirs:
 
 # make sh files
 shfiles = []
-for pool in poolfiles:
-    for f in sorted(poolfiles[pool]):
-        #no need to combine files by scaff, just create symlinks
-        scaff    = op.basename(f).split("_scaff")[-1].replace(".g.vcf.gz","")
-        combfile = op.join(outdir,'%s--%s_combined.vcf.gz' % (pool,scaff))
-        tbifile  = f.replace(".gz",".gz.tbi")
-        tbilink  = combfile.replace(".gz",".gz.tbi")
-        try:
-            os.symlink(f,combfile)
-            os.symlink(tbifile,tbilink)
-        except:
-            print("symlink already exists")
-            continue # this will skip re-doing any poolseq samps that were done solo from 03a_.py
-        gfile    = combfile.replace("_combined.vcf.gz","_genotyped.vcf.gz")
-        snpfile  = gfile.replace("_genotyped.vcf.gz","_snps.vcf.gz")
-        cmd = '''gatk --java-options "-Xmx4g" GenotypeGVCFs -R %(ref)s -V %(combfile)s -O %(gfile)s
+for pool,pfiles in poolfiles.items():
+    if len(pfiles) == 1000: # if it's ready
+        ref = poolref[pool]
+        for f in sorted(pfiles):
+            #no need to combine files by scaff (with themselves), just create symlinks
+            scaff    = op.basename(f).split("_scaff")[-1].replace(".g.vcf.gz","")
+            combfile = op.join(outdir,'%s--%s_combined.vcf.gz' % (pool,scaff))
+            tbifile  = f.replace(".gz",".gz.tbi")
+            tbilink  = combfile.replace(".gz",".gz.tbi")
+            try:
+                os.symlink(f,combfile)
+                os.symlink(tbifile,tbilink)
+            except:
+                print("symlink already exists")
+                continue # this will skip re-doing any poolseq samps that were done solo from 03a_.py
+            gfile    = combfile.replace("_combined.vcf.gz","_genotyped.vcf.gz")
+            snpfile  = gfile.replace("_genotyped.vcf.gz","_snps.vcf.gz")
+            cmd = '''gatk --java-options "-Xmx4g" GenotypeGVCFs -R %(ref)s -V %(combfile)s -O %(gfile)s
 
 gatk SelectVariants -R %(ref)s -V %(gfile)s --select-type-to-include SNP -O %(snpfile)s
 
 ''' % locals()
 
-        filE = op.join(shdir,'%(pool)s--%(scaff)s.sh' % locals())
-        print('\t','\t',filE)
-        scaff = op.basename(f).split("scaff")[1].split(".g.")[0]
-        text = '''#!/bin/bash
-#SBATCH --time=23:59:59
+            filE = op.join(shdir,'%(pool)s--%(scaff)s.sh' % locals())
+            #print('\t','\t',filE)
+            scaff = op.basename(f).split("scaff")[1].split(".g.")[0]
+            text = '''#!/bin/bash
+#SBATCH --time=02:59:59
 #SBATCH --nodes=1
-#SBATCH --mem=30000M
+#SBATCH --mem=8000M
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --job-name=%(pool)s--%(scaff)s
@@ -104,8 +110,8 @@ module load gatk/4.0.8.1
 %(cmd)s
 
 ''' % locals()
-        with open(filE,'w') as o:
-            o.write("%s" % text)
-        shfiles.append(filE)
+            with open(filE,'w') as o:
+                o.write("%s" % text)
+            shfiles.append(filE)
 print(shdir)
-print(shfiles)
+print(len(shfiles))

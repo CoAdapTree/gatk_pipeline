@@ -80,7 +80,7 @@ for scaff in scaffiles:
 #SBATCH --mem-per-cpu=30000M
 #SBATCH --job-name=%(s)s-%(samp)s-%(shz)s
 #SBATCH --export=all
-#SBATCH --output=gvcf%(shz)s_%(samp)s_%%j.out 
+#SBATCH --output=%(s)s_%(samp)s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
 
 # for debugging 

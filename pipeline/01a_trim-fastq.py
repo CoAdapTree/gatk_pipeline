@@ -47,7 +47,7 @@ for d in [shtrimDIR,trimDIR,msgdir]:
     if not op.exists(d):
         os.makedirs(d)
 mfile = op.join(fqdir,'messages/msgs.txt')
-        
+pool = op.basename(fqdir)        
 ###
 
 
@@ -114,7 +114,7 @@ for s in seq_pairs:
     json = r1out.replace("R1","").replace(".fastq","_R1_R2")
     logfile = r1out.replace("R1","").replace(".fastq","_R1_R2_stats.log")
     shz  = str(tcount).zfill(3)
-    cmd  = '''fastp -i %(r1)s -o %(r1out)s -I %(r2)s -O %(r2out)s -g --cut_window_size 5 --cut_mean_quality 30 --qualified_quality_phred 30 --unqualified_percent_limit 20 --n_base_limit 5 --length_required 75 -h %(html)s.html --cut_by_quality3 --thread 16 --json %(json)s.json --adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT > %(logfile)s
+    cmd  = '''fastp -i %(r1)s -o %(r1out)s -I %(r2)s -O %(r2out)s --disable_quality_filtering -g --cut_window_size 5 --cut_mean_quality 30 --n_base_limit 20 --length_required 75 -h %(html)s.html --cut_by_quality3 --thread 16 --json %(json)s.json --adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT > %(logfile)s
 
 
 cd $HOME/pipeline
@@ -133,19 +133,20 @@ python 01b_bwa-map_rginfo_mark_build.py %(ref)s %(r1out)s %(r2out)s %(shdir)s %(
     if fcount == ceil or tcount == len(seq_pairs):
         shz = str(shcount).zfill(3)
         header = '''#!/bin/bash
-#SBATCH --job-name=trim%s
+#SBATCH --job-name=%(pool)s_trim%(shz)s
 #SBATCH --time=02:59:00
 #SBATCH --mem=5000M
 #SBATCH --cpus-per-task=16
-#SBATCH --output=trim%s_%%j.out
+#SBATCH --output=%(pool)s_trim%(shz)s_%%j.out
 #SBATCH --mail-user=lindb@vcu.edu
 #SBATCH --mail-type=FAIL
 
 source $HOME/.bashrc
+module load fastp/0.19.5
 
-''' % (shz,shz)
+''' % locals()
         text = header + text
-        filE = op.join(shtrimDIR,'trim_%s.sh' % shz)
+        filE = op.join(shtrimDIR,'%(pool)s_trim%(shz)s.sh' % locals())
         shfiles.append(filE)
         with open(filE,'w') as o:
             o.write("%s" % text)

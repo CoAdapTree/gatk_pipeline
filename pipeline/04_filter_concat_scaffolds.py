@@ -6,6 +6,11 @@
 # instead of calling snps when combining some of our pools, call snps for indiviual pools
 ###
 
+### FIX
+# I've used 'kit' as a key word that is in all of the library/pool names, this should be changed if not the case
+# see creation of combdict
+###
+
 ### imports
 import sys
 import os
@@ -75,8 +80,7 @@ for lib in combdict.keys():
 #SBATCH --ntasks=32
 #SBATCH --cpus-per-task=1
 #SBATCH --job-name=%(lib)s-concat
-#SBATCH --export=all
-#SBATCH --output=%(lib)s-concat.out 
+#SBATCH --output=%(lib)s-concat_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
 #SBATCH --mail-type=FAIL
 
@@ -92,14 +96,15 @@ gatk VariantFiltration -R %(ref)s -V %(catout)s -O %(filtout)s --filter-expressi
 
 ''' % locals()
         file = op.join(shdir,"%s-concat.sh" % lib)
-        if not op.exists(filtout):
+        if not op.exists(filtout): # so I can run this when files begin to finish from 03a and 03b
             if not op.exists(filtout.replace(".gz",".gz.tbi")):
                 with open(file,'w') as o:
                     o.write("%s" % text)
                 shfiles.append(file)
 
-os.chdir(shdir)
-for sh in shfiles:
-    os.system('echo %s' % sh)
-    os.system('sbatch %s' % sh)
+# os.chdir(shdir)
+# for sh in shfiles:
+#     os.system('echo %s' % sh)
+#     os.system('sbatch %s' % sh)
+[print(sh) for sh in shfiles]
         

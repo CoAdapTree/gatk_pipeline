@@ -36,15 +36,29 @@ if not op.exists(workingdir):
     
 # get job info and current memory/time limits
 jobid    = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
-#print('jobid=',jobid)
-jobinfo  = os.popen("sacct -j %s | grep 'lindb'" % jobid).read()
-#print('jobinfo=',jobinfo)
-jobmem   = int([x for x in jobinfo.split() if 'mem' in x][0].split(",")[1].split('=')[1].replace("M",""))
-#print('jobmem=',jobmem)
-timeinfo = os.popen("sacct -j %s --format Timelimit" % jobid).read()
-#print('timeinfo=',timeinfo)
-jobtime  = int(timeinfo.split()[-1].split(':')[0])
-#print('jobtime=',jobtime)
+print('jobid = ',jobid)
+f = [f for f in fs(DIR) if str(jobid) in f][0]
+with open(f,'r') as o:
+    text = o.read().split("\n")
+for line in text:
+    if 'mem-' in line:
+        jobmem = int(line.split("=")[-1][:-1])
+    if 'time=' in line:
+        splits = line.split("=")[-1].split("-")
+        if len(splits) > 1:            
+            # multi-day job
+            jobtime = int(splits[0])*24
+        else:
+            # xhour job
+            jobtime = int(line.split("=")[-1].split(':')[0] )    
+#jobinfo  = os.popen("sacct -j %s | grep 'lindb'" % jobid).read()
+#print('jobinfo = ',jobinfo)
+#jobmem   = int([x for x in jobinfo.split() if 'mem' in x][0].split(",")[1].split('=')[1].replace("M",""))
+print('jobmem = ',jobmem)
+#timeinfo = os.popen("sacct -j %s --format Timelimit" % jobid).read()
+#print('timeinfo = ',timeinfo)
+#jobtime  = int(timeinfo.split()[-1].split(':')[0])
+print('jobtime = ',jobtime)
 
 # get list of remaining gatk calls
 shfiles = [f for f in fs(DIR) if f.endswith('.sh')]
