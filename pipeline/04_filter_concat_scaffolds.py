@@ -58,11 +58,12 @@ for i,snp in enumerate(snpfiles):
         combdict[lib] = []
     combdict[lib].append(snp)
 os.system('echo there are %s keys in combdict' % str(len(combdict.keys())))
-for k in combdict.keys():
-    os.system('echo %s' % k)
+for k,kfiles in combdict.items():
+    os.system('echo %s %s' % (k,str(len(kfiles))))
 
 # write the sh files
 shfiles = []
+fcats   = []
 for lib in combdict.keys():
     if len(combdict[lib]) in [500,1000]:
         catout   = op.join(catdir,"%s_concatenated_snps.vcf.gz" % lib)
@@ -101,10 +102,23 @@ gatk VariantFiltration -R %(ref)s -V %(catout)s -O %(filtout)s --filter-expressi
                 with open(file,'w') as o:
                     o.write("%s" % text)
                 shfiles.append(file)
+                # some times it's easier to just salloc some resources and run, instead of sbatching 
+                with open(file,'r') as o:
+                    text = o.read().split("\n")
+                lines = []
+                for line in text:
+                    if ('gatk' in line or 'bcftools' in line) and 'module' not in line:
+                        lines.append(line)
+                fcat = file.replace(".sh","_catfile.sh")
+                fcats.append(fcat)
+                with open(fcat,'w') as o:
+                    for line in lines:
+                        o.write("%s\n" % line)
 
 # os.chdir(shdir)
 # for sh in shfiles:
 #     os.system('echo %s' % sh)
 #     os.system('sbatch %s' % sh)
 [print(sh) for sh in shfiles]
+[print(f) for f in fcats]
         
