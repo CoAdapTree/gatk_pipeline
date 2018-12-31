@@ -58,17 +58,63 @@ def addlink(args):
         print('added symlink to queue: %s' % linkname)
     else:
         print('unable to create symlink from %s to %s' % (linkname,trushfile))     
+def delrescheduler(rescheduler,createdrescheduler):
+    if createdrescheduler == True:
+        try:
+            os.remove("%(rescheduler)s" % globals())
+            os.system('echo removed rescheduler')
+        except:
+            os.system('echo could not remove rescheduler')
+            pass
+def checksq(rt):
+    exitneeded = False
+    if not type(rt) == list:
+        os.system('echo "type(sq) != list, exiting rescheduler.py"')
+        exitneeded = True
+    if len(rt) == 0:
+        os.system('echo "len(sq) == 0, exiting rescheduler.py"')
+        exitneeded = True
+    for s in rt:
+        if not s == '':
+            if 'socket' in s.lower():
+                os.system('echo "socket in sq return, exiting rescheduler.py"')
+                exitneeded = True
+            try:
+                assert int(s.split()[0]) == float(s.split()[0])
+            except:
+                os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
+                exitneeded = True
+    if exitneeded == True:
+        delrescheduler(rescheduler,createdrescheduler)
+        exit()
+def removeworker(DIR,trushfile):
+    # remove worker from workingdir
+    workingdir = op.join(DIR,'workingdir')
+    worker = [f for f in fs(workingdir) if op.basename(trushfile) in f]
+    if len(worker) == 1:
+        worker = worker[0]
+        try:
+            os.unlink(worker)
+        except:
+            os.system('echo could not unlink worker: %s' % worker)
+def getpids(sq):
+    pids = []
+    for s in sq:
+        if not s == '':
+            pid = s.split()[0]
+            pids.append(pid)
+    return pids
 
 
 # identify outs that aren't running
+createdrescheduler = False
 sq = os.popen("squeue -u lindb | grep 'R 2'").read().split("\n")
+    # check sq return with if statements:
+    # hopefully will solve problem when I get: "slurm_load_jobs error: Socket timed out on send/recv operation"
+    # not sure if the bash error is being returned to sq; it doesn't happen to often, bash error is in outfile
+checksq(sq)
 #print(sq)
-pids = []
-for s in sq:
-    if not s == '':
-    #     print s
-        pid = s.split()[0]
-        pids.append(pid)
+pids = getpids(sq)
 #print(pids)
 runs = []
 for out in outs:
@@ -78,7 +124,6 @@ for out in outs:
 outs = runs
 
 os.system('echo running rescheduler.py')
-createdrescheduler = False
 if len(outs) > 0:
 #     print('outs =',outs)
     if not op.exists(rescheduler):
@@ -92,12 +137,8 @@ if len(outs) > 0:
         for out in outs:
             #check again to see if job is running
             sq = os.popen("squeue -u lindb | grep 'R 2'").read().split("\n")
-            pids = []
-            for s in sq:
-                if not s == '':
-                #     print s
-                    pid = s.split()[0]
-                    pids.append(pid)
+            checksq(sq)
+            pids = getpids(sq)
             pid = op.basename(out).split(".out")[0].split("_")[1]
             if pid in pids:
                 continue
@@ -112,14 +153,14 @@ if len(outs) > 0:
             founderror = False
             cancelled = False
             for line in o[-20:]: # look for an error message
-                if 'oom-kill' in line  or 'error' in line:
+                if 'oom-kill' in line or 'error' in line:
                     if not 'no mem or time errors found in' in line:
                         os.system ('echo found an error')
                         founderror = True
                         break
             if founderror == True:
-                for test in o[-20:]: # look for a time error 
-                    if 'time limit' or 'cancelled' in test.lower():
+                for test in o[-20:]: # look for a timeout error 
+                    if 'time limit' in test.lower() or 'cancelled' in test.lower():
                         timelimit = True
                         if 'cancelled' in test.lower():
                             cancelled = True
@@ -152,12 +193,8 @@ if len(outs) > 0:
                                 addlink((trushfile,linkname))
                                 
                                 # remove worker from workingdir
-                                workingdir = op.join(DIR,'workingdir')
-                                worker = [f for f in fs(workingdir) if op.basename(trushfile) in f][0]
-                                try:
-                                    os.unlink(worker)
-                                except:
-                                    print('could not unlink worker: %s' % worker)
+                                removeworker(DIR,trushfile)
+                                
                                 break
                     else:
                         for line in o[::-1]:
@@ -169,7 +206,9 @@ if len(outs) > 0:
                                 trushfile = vcf2sh(vcf)
 
                                 os.system('echo linked to %s' % trushfile)
-                                sh = open(trushfile).read()
+                                with open(trushfile,'r') as O:
+                                    sh = O.read()
+#                                 sh = open(trushfile).read()
                                 if '00:00:05' in sh: # for debugging/testing
                                     text = sh.replace('00:00:05','02:59:00')
                                 elif '02:59:00' in sh:
@@ -188,8 +227,8 @@ if len(outs) > 0:
                                     os.system('echo cound not find replacement')
                                     os.system('cat %s' % trushfile)
                                     break
-                                with open(trushfile,'w') as o:
-                                    o.write("%s" % text)
+                                with open(trushfile,'w') as O:
+                                    O.write("%s" % text)
 
                                 # add job back to the queue  
                                 linkname = op.join(DIR,op.basename(trushfile))
@@ -208,12 +247,20 @@ if len(outs) > 0:
                             trushfile = vcf2sh(vcf)
                             os.system('echo adjusting mem limit of: %s' % trushfile)
                             os.system('echo linked to %s' % trushfile)
-                            sh = open(trushfile).read()
-                            if '8000M' in sh:
-                                text = sh.replace('8000M','20000M')
+                            with open(trushfile,'r') as O:
+                                sh = O.read()
+#                             sh = open(trushfile).read()
+                            if '4000M' in sh:
+                                text = sh.replace("4000M","12000M")
+                                os.system('echo increasing mem to 4G')
+                            elif '8000M' in sh:
+                                text = sh.replace('8000M','12000M')
+                                os.system('echo increasing mem to 12G')
+                            elif '12000M' in sh:
+                                text = sh.replaec("12000M","20000M")
                                 os.system('echo increasing mem to 20G')
                             elif '20000M' in sh:
-                                text = sh.replace('20000M','30000M')
+                                text = sh.replace('20000M','30000M') # keep it in, i changed last if statment, was 8Gb->20Gb
                                 os.system('echo increasing mem to 30G')
                             elif '30000M' in sh:
                                 text = sh.replace('30000M','50000M')
@@ -224,12 +271,15 @@ if len(outs) > 0:
                             elif '100000M' in sh:
                                 text = sh.replace('100000M','120000M')
                                 os.system('echo increasing mem to 120G')
-                            with open(trushfile,'w') as o:
-                                o.write("%s" % text)
+                            with open(trushfile,'w') as O:
+                                O.write("%s" % text)
                             
                             # add job back to the queue  
                             linkname = op.join(DIR,op.basename(trushfile))
                             addlink((trushfile,linkname))
+                            
+                            # remove worker from workingdir
+                            removeworker(DIR,trushfile)
 
                             break
             else:
@@ -249,10 +299,4 @@ if len(outs) > 0:
 else:
     os.system('echo rescheduler found no outfiles to analyze or all outfiles are for jobs currently running')
 
-if createdrescheduler == True:
-    try:
-        os.remove(rescheduler)
-        os.system('echo removed rescheduler')
-    except:
-        os.system('echo could not remove rescheduler')
-        pass  
+delrescheduler(rescheduler,createdrescheduler)
