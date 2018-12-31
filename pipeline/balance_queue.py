@@ -44,7 +44,7 @@ def getsq(phase):
         os.system('echo no jobs in queue to balance')
         exit()
 def adjustjob(acct, jobid):
-    os.system('scontrol update Account=%s jobid=%s' % ('%s_cpu' % acct,str(jobid)) )
+    os.system('scontrol update Account=%s_cpu jobid=%s' % (acct, str(jobid)) )
 def getaccounts(SQ):
     accounts = {}
     for q in SQ:
@@ -125,7 +125,7 @@ def announcefinal(accounts):
     os.system('echo final job announcement')
     for account in accounts:
         os.system('echo %s jobs on %s') % (str(len(accounts[account])),account)
-def main():
+def main(phase):
     # get the queue
     sq = getsq(phase)
 
@@ -145,9 +145,9 @@ def main():
     givetotaker(giver,taker,accts)
                               
     # announce final job counts
-    announcefinal(getaccounts(getsq()))
+    announcefinal(getaccounts(getsq(phase)))
     
-main()
+main(phase)
     
     
     
