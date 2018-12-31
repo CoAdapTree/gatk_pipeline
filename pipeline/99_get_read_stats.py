@@ -2,6 +2,19 @@
 # put this in an SBATCH file and submit to queue with 32 engines
 # python 99_get_read_stats.py /path/to/parentdir/used/in/00_start-pipeline/command engines<int>
 ### 
+##!/bin/bash
+##SBATCH --time=12:0:0
+##SBATCH --nodes=1
+##SBATCH --ntasks=32
+##SBATCH --cpus-per-task=1
+##SBATCH --mem-per-cpu=500M
+##SBATCH --job-name=99_get_read_stats
+##SBATCH --output=99_get_read_stats---%j.out
+##source $HOME/.bashrc
+##cd $HOME/pipeline
+##module load samtools/1.9
+##cd $HOME/pipeline
+##python 99_get_read_stats.py $1 32
 
 ### imports
 import sys
@@ -76,6 +89,7 @@ for j in sorted(data):
     samps.append(samp)
 
 # get counts from downstream
+os.system('echo getting bam counts')
 key = ['mapped_bamfile','filtered_bamfile','dedup_bamfile']
 for k in key:
     readinfo[k] = OrderedDict()
