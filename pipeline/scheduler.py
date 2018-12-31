@@ -27,7 +27,7 @@ print("DIR=",DIR)
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
-qthresh   = 700 
+qthresh   = 600
 user = os.popen("echo $USER").read().replace("\n","")
 ###
 
@@ -50,10 +50,10 @@ def startscheduler(scheduler):
 def sbatchjobs(files):
     for f in files:
         realp = op.realpath(f) # find the file to which the symlink file is linked
-        if op.exists(f):
+        if op.exists(f): # as long as the symlink is still there
             # print (f)
             try:
-                os.unlink(f) # first remove the symlink from the scheddir
+                os.unlink(f) # first try to remove the symlink from the scheddir
                 print('unlinked %s' % f)
             except:          # unless gvcf_helper has already done so (shouldnt be the case, but maybe with high qthresh)
                 print('unable to unlink symlink %f' % f)
@@ -63,7 +63,7 @@ def sbatchjobs(files):
 def main(DIR):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
-    x = sq("squeue -u %(user)s | grep '%(user)s' | wc -l" % globals()) # number of jobs in the queue
+    x = sq("squeue -u %(user)s | grep scatter | wc -l" % globals()) # number of gvcf jobs in the queue
     print ('queue length = ',x)
     if x < qthresh: # if there is room in the queue
         print('scheduler not running')
@@ -80,6 +80,9 @@ def main(DIR):
             print('no files to sbatch')
     else:
         print('scheduler was not running, but no room in queue' )
+#     pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
+#     os.system('python %s %s' % (op.join(pipedir,'balance_queue.py scatter'),
+#                                 fqdir))
     delsched(scheduler)
 ###
 
