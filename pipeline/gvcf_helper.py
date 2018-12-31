@@ -3,7 +3,7 @@
 ###
 
 ###
-# usage: gvcf_helper.py /path/to/fastq.gz/folder/
+# usage: gvcf_helper.py /path/to/fastq.gz/folder/ /path/to/last/.tbi/file.tbi
 
 ###
 # purpose: to keep running gatk commands until time or memory runs out
@@ -12,6 +12,7 @@
 ### imports
 import sys
 import os
+import signal
 from os import path as op
 from os import listdir
 import pickle
@@ -24,10 +25,18 @@ def fs (DIR):
 ###
 
 ### args
-thisfile, fqdir = sys.argv
+thisfile, fqdir, tbi = sys.argv
 ###
 
-# os.system('source $HOME/.bashrc')
+
+# kill the job if the previous command ran out of mem
+def checktbi(tbi):
+    if not op.exists(tbi):
+        os.system('echo previous tbi did not finish: %s' % tbi) 
+        os.kill(os.getppid(), signal.SIGHUP)
+checktbi(tbi)
+        
+os.system('source $HOME/.bashrc')
 DIR = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
 os.chdir(DIR)
 workingdir = op.join(DIR,'workingdir')
@@ -36,7 +45,11 @@ if not op.exists(workingdir):
     
 # get job info and current memory/time limits
 jobid    = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
-print('jobid = ',jobid)
+if not float(jobid) == int(jobid):
+    # if I can't retrieve the jobid, just let the job die
+    # ensures that there wasn't an error to the slurm request (some times I get timeouts etc as returns)
+    exit()
+os.system('echo jobid = %s' % jobid)
 f = [f for f in fs(DIR) if str(jobid) in f][0]
 with open(f,'r') as o:
     text = o.read().split("\n")
@@ -54,11 +67,11 @@ for line in text:
 #jobinfo  = os.popen("sacct -j %s | grep 'lindb'" % jobid).read()
 #print('jobinfo = ',jobinfo)
 #jobmem   = int([x for x in jobinfo.split() if 'mem' in x][0].split(",")[1].split('=')[1].replace("M",""))
-print('jobmem = ',jobmem)
+os.system('echo jobmem = %s' % jobmem)
 #timeinfo = os.popen("sacct -j %s --format Timelimit" % jobid).read()
 #print('timeinfo = ',timeinfo)
 #jobtime  = int(timeinfo.split()[-1].split(':')[0])
-print('jobtime = ',jobtime)
+os.system('echo jobmem = %s' % jobmem)
 
 # get list of remaining gatk calls
 shfiles = [f for f in fs(DIR) if f.endswith('.sh')]
@@ -84,8 +97,9 @@ if len(shfiles) > 0:
 
             # only continue to run jobs that fit in the same memory allocation (dont waste resources if its going to fail)
             mem = int([x for x in o if 'mem' in x][0].split("=")[1].replace("M\n",""))
-            if mem > jobmem:
-                os.system('echo file exceeds mem limit')
+#             if not mem == jobmem: # don't waste resources on jobs requiring less mem either
+            if mem > jobmem: # since I'm not using RAC for jobs > 4G, allow jobs with less mem to run
+                os.system('echo file does not match mem limit')
                 shutil.move(reservation,s) # put the job back in the queue
                 continue
             # only continue to run jobs that might fit in same time allocation
@@ -94,7 +108,6 @@ if len(shfiles) > 0:
                 os.system('echo file exceeds necessary time')
                 shutil.move(reservation,s)
                 continue
-
 
             os.system('echo file is ok to proceed')
             for line in o:
@@ -109,6 +122,11 @@ if len(shfiles) > 0:
                     except:
                         os.system('echo unable to unlink %s' % reservation)
                         pass
+                    # make sure the command executed until completion, else kill the job to be swept by rescheduler.py
+                    vcf = cmd.split()[-5]
+                    tbi = vcf.replace(".gz",".gz.tbi")
+                    checktbi(tbi) # in case I exceeded mem
+                    
                     pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
                     os.system('python %s %s' % (op.join(pipedir,'rescheduler.py'),
                                                 fqdir))
