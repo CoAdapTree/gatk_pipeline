@@ -60,11 +60,12 @@ def getaccounts(SQ):
         os.system('echo all accounts have low priority, leaving queue as-is')
         exit()
     return accounts
-def getbalance(accounts):
+def getbalance(accounts,num):
     sums = 0
     for account in accounts:
         sums += len(accounts[account].keys())
-    bal = math.ceil(sums/3)
+    bal = math.ceil(sums/num)
+    print('bal%i = ' % num,bal)
     return bal
 def checknumaccts(accts,checking,mc):
     # len(accounts) will never == 2 after pop, since I checked for len(accounts) == 3
@@ -80,8 +81,8 @@ def redistribute4G(accounts,bal):
         accounts.pop(RAC) # drop RAC from list to redistribute, exit if nothing to redistribute
         checknumaccts(accounts,'RAC')    # if all jobs are on RAC, exit
         return accounts
-    accts = list(accounts.keys())
-    for account in accts: 
+    keys = list(accounts.keys())
+    for account in keys: 
         # distribute 4G jobs to RAC
         pids = list(accounts[account].keys())
         mcount = 0
@@ -114,26 +115,33 @@ def gettaker(accounts):
     return giver,taker
 def givetotaker(giver,taker,accounts,bal):
     taken = 0
-    for pids in accounts[giver]:
-        for pid in pids:
+    pids = list(accounts[giver].keys())
+    numtotake = len(pids) - bal
+    printout = 'giver has {} jobs to give. (bal= {}). Giver ({}) is giving {} jobs to taker ({})'.format(len(pids),bal,giver,numtotake,taker)
+    os.system('echo -e "\\t %s"' % printout)
+    if numtotake > 0:
+        for pid in pids[::-1]: # re-assign the newer jobs, hopefully older jobs will eventually run
             adjustjob(taker,pid)
             taken += 1
-            if taken == bal:
-                os.system('echo redistributed %s jobs from %s to %s' % (str(taken),giver,taker))
+            if taken == numtotake:
+                os.system('echo  -e "\\t redistributed %s jobs from %s to %s"' % (str(taken),giver,taker))
                 break
-def announcefinal(accounts):
-    os.system('echo final job announcement')
+    else:
+        os.system('echo -e "\t giver sees that taker has enough, so giver is not giving"')
+def announceacctlens(accounts,fin):
+    os.system('echo %s job announcement' % ('final' if fin==True else 'first'))
     for account in accounts:
-        os.system('echo %s jobs on %s') % (str(len(accounts[account])),account)
+        os.system('echo %s jobs on %s' % (str(len(accounts[account])),account))
 def main(phase):
     # get the queue
     sq = getsq(phase)
 
     # get per-account counts of jobs in Priority pending status, exit if all accounts have low priority
     accts = getaccounts(sq)
+    announceacctlens(accts,False)
     
     # figure out how many to balance remaining
-    balance = getbalance(accts)
+    balance = getbalance(accts,3)
 
     # redistribute 4G jobs to RAC unless RAC has low priority, exit if all jobs redistributed or no jobs to redistribute
     accts = redistribute4G(accts,balance)
@@ -142,10 +150,11 @@ def main(phase):
     giver, taker = gettaker(accts)
     
     # redistribute to taker
-    givetotaker(giver,taker,accts)
+    balance = getbalance(accts,2)
+    givetotaker(giver,taker,accts,balance)
                               
     # announce final job counts
-    announcefinal(getaccounts(getsq(phase)))
+    announceacctlens(getaccounts(getsq(phase)),True)
     
 main(phase)
     
