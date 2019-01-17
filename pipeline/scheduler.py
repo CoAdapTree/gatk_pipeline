@@ -27,7 +27,7 @@ print("DIR=",DIR)
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
-qthresh   = 600
+qthresh   = 1000
 user = os.popen("echo $USER").read().replace("\n","")
 ###
 
@@ -42,11 +42,26 @@ def delsched(scheduler):
         os.remove(scheduler)
     except OSError as e:
         pass
+def getpids():
+    pids = os.popen('squeue -u lindb -o "%i"').read().split("\n")
+    pids = [p for p in pids if not p == '']
+    if len(pids) != len(set(pids)):
+        print('len !- luni pids')
+        delsched(scheduler)
+        exit()
+    return pids[1:]
 def startscheduler(scheduler):
     with open(scheduler,'w') as o:
         # after creating the file, write job id in case i want to cancel process
         jobid = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
         o.write("scheduler id = %s" % jobid)
+    # double check that the scheduler is correct
+    with open(scheduler,'r') as o:
+        text = o.read()
+    if not text.split()[-1] == '=':
+        if not text.split()[-1] == jobid:
+            os.system('echo another scheduler is in conflict. Allowing other scheduler to proceed. Exiting')
+            exit()
 def sbatchjobs(files):
     for f in files:
         realp = op.realpath(f) # find the file to which the symlink file is linked
@@ -80,10 +95,22 @@ def main(DIR):
             print('no files to sbatch')
     else:
         print('scheduler was not running, but no room in queue' )
-#     pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
-#     os.system('python %s %s' % (op.join(pipedir,'balance_queue.py scatter'),
-#                                 fqdir))
+    pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
+    os.system('python %s scatter' % (op.join(pipedir,'balance_queue.py')))
     delsched(scheduler)
+def bigbrother(scheduler,DIR):
+    # if the scheduler controller has died, remove the scheduler
+    with open(scheduler,'r') as o:
+        text = o.read().replace("\n","")
+    pid = text.split()[-1]
+    if not pid == '=':
+        pids = getpids()
+        if not pid in pids:
+            print('controller was not running, so the scheduler was destroyed')
+            delsched(scheduler)
+            main(DIR)
+        else:
+            print('controller is running, allowing it to proceed')
 ###
 
 # main
@@ -92,3 +119,5 @@ if not op.exists(scheduler): # if scheduler isn't running
     main(DIR)
 else:
     print('scheduler was running')
+    bigbrother(scheduler,DIR)
+    
