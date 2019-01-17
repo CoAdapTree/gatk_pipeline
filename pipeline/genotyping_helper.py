@@ -11,12 +11,13 @@
 ###
 
 ### imports
-import sys
 import os
-from os import path as op
-from os import listdir
+import sys
 import pickle
 import shutil
+import signal
+from os import listdir
+from os import path as op
 from random import shuffle
 def ls(DIR):
     return sorted([f for f in listdir(DIR)])
@@ -25,10 +26,22 @@ def fs (DIR):
 ###
 
 ### args
-thisfile, parentdir = sys.argv
+thisfile, parentdir, outfile = sys.argv
 if parentdir.endswith("/"):
     parentdir = parentdir[1:]
 ###
+
+# balance the queue
+pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
+os.system('python %s genotyp' % op.join(pipedir,'balance_queue.py'))
+
+# make sure the previous outfile was created
+def checkoutfile(outfile):
+    if not op.exists(outfile):
+        os.system('echo previous outfile did not finish: %s' % outfile) 
+        os.kill(os.getppid(), signal.SIGHUP)
+checkoutfile(outfile)
+
 
 # os.system('source $HOME/.bashrc')
 scheddir = op.join(parentdir,'shfiles/supervised/select_variants_within_and_across')
@@ -73,9 +86,14 @@ shuffle(shfiles)
 
 # run commands until I run out of time
 os.system('echo running gvcf_helper.py')
+badcount = 0
 if len(shfiles) > 0:
     for s in shfiles:
     #     print (s)
+        if badcount > 500:
+            # no need to have the job keep looking for other jobs if most other jobs have different reqs (mem, time)
+            os.system('echo exceeded badcount, exiting')
+            exit()
         reservation = op.join(workingdir,op.basename(s))
         if op.exists(s):
             try:
@@ -91,15 +109,17 @@ if len(shfiles) > 0:
 
             # only continue to run jobs that fit in the same memory allocation (dont waste resources if its going to fail)
             mem = int([x for x in o if 'mem' in x][0].split("=")[1].replace("M\n",""))
-            if mem > jobmem or mem < jobmem: # don't waste resources on jobs requiring less mem either
+            if not mem == jobmem: # don't waste resources on jobs requiring less mem either
                 os.system('echo file does not match mem limit')
                 shutil.move(reservation,s) # put the job back in the queue
+                badcount += 1
                 continue
             # only continue to run jobs that might fit in same time allocation
             TIME = int([x for x in o if 'time' in x][0].split("=")[1].split(':')[0])
             if TIME > jobtime:
                 os.system('echo file exceeds necessary time')
                 shutil.move(reservation,s)
+                badcount += 1
                 continue
 
             os.system('echo file is ok to proceed')
@@ -113,12 +133,16 @@ if len(shfiles) > 0:
                 os.system('echo running cmd:')
                 os.system('echo %s' % cmd)
                 os.system('%s' % cmd)
+                # check that outfile was made
+                outfile = cmd.split()[-1]
+                checkoutfile(outfile)
             try:
                 os.unlink(reservation)
                 os.system('echo unlinked shfile %s' % reservation)
             except:
                 os.system('echo unable to unlink %s' % reservation)
                 pass
+            
             pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
             os.system('python %s %s' % (op.join(pipedir,'genotyping_rescheduler.py'),
                                         parentdir))
@@ -126,7 +150,5 @@ if len(shfiles) > 0:
                                         parentdir))
 else:
     os.system('echo no files to help')
-    
-    
     
     

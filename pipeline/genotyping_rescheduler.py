@@ -65,6 +65,14 @@ def delrescheduler(rescheduler,createdrescheduler):
         except:
             os.system('echo could not remove rescheduler')
             pass
+def getallpids():
+    pids = os.popen('squeue -u lindb -o "%i"').read().split("\n")
+    pids = [p for p in pids if not p == '']
+    if len(pids) != len(set(pids)):
+        print('len !- luni pids')
+        delrescheduler(rescheduler,globals()['createdrescheduler'])
+        exit()
+    return pids[1:]
 def checksq(rt):
     exitneeded = False
     if not type(rt) == list:
@@ -84,7 +92,7 @@ def checksq(rt):
                 os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
                 exitneeded = True
     if exitneeded == True:
-        delrescheduler(rescheduler)
+        delrescheduler(rescheduler,globals()['createdrescheduler'])
         exit()
 def removeworker(DIR,trushfile):
     # remove worker from workingdir
@@ -103,6 +111,18 @@ def getpids(sq):
             pid = s.split()[0]
             pids.append(pid)
     return pids
+def bigbrother(rescheduler):
+    # if the scheduler controller has died, remove the scheduler
+    with open(rescheduler,'r') as o:
+        text = o.read().replace("\n","")
+    pid = text.split()[-1]
+    if not pid == '=':
+        pids = getallpids()
+        if not pid in pids:
+            print('controller was not running, so the scheduler was destroyed')
+            delrescheduler(rescheduler,True)
+        else:
+            print('controller is running, allowing it to proceed')
 
 
 # identify outs that aren't running
@@ -128,6 +148,14 @@ if len(outs) > 0:
             jobid = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
             o.write("rescheduler id = %s" % jobid)
         createdrescheduler = True
+        # double check that the rescheduler is correct
+        with open(rescheduler,'r') as o:
+            text = o.read()
+        if not text.split()[-1] == '=':
+            if not text.split()[-1] == jobid:
+                os.system('echo another rescheduler is in conflict. Allowing other rescheduler to proceed. Exiting')
+                time.sleep(5)
+                exit()
 
         # look for errors in outfiles and resubmit the error-causing shfile using more mem or time
         for out in outs:
@@ -275,7 +303,11 @@ if len(outs) > 0:
                 pass
     else:
         os.system('echo rescheduler was running')
+        bigbrother(rescheduler)
+        
 else:
     os.system('echo rescheduler found no outfiles to analyze or all outfiles are for jobs currently running')
 
 delrescheduler(rescheduler,createdrescheduler)
+if not createdrescheduler == False and op.exists(rescheduler):
+    bigbrother(rescheduler)

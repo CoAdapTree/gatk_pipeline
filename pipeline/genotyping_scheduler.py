@@ -17,6 +17,8 @@ def ls(DIR):
     return sorted([f for f in listdir(DIR)])
 def fs (DIR):
     return sorted([op.join(DIR,f) for f in ls(DIR)])
+def luni(mylist):
+    return len(set(mylist))
 ###
 
 ### args
@@ -31,7 +33,7 @@ print("scheddir=",scheddir)
 assert op.exists(scheddir)
 scheduler = op.join(scheddir,'scheduler.txt')
 os.chdir(scheddir)
-qthresh   = 100
+qthresh   = 10
 user = os.popen("echo $USER").read().replace("\n","")
 ###
 
@@ -44,13 +46,27 @@ def delsched(scheduler):
     # stop scheduler
     try:
         os.remove(scheduler)
-    except OSError as e:
+    except:
         pass
+def getpids():
+    pids = os.popen('squeue -u lindb -o "%i"').read().split("\n")
+    pids = [p for p in pids if not p == '']
+    if len(pids) != luni(pids):
+        print('len !- luni pids')
+        delsched(scheduler)
+        exit()
+    return pids[1:]
 def startscheduler(scheduler):
     with open(scheduler,'w') as o:
         # after creating the file, write job id in case i want to cancel process
         jobid = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
         o.write("scheduler id = %s" % jobid)
+    # double check that the scheduler is correct
+    with open(scheduler,'r') as o:
+        text = o.read()
+    if not text.split()[-1] == jobid:
+        os.system('echo another scheduler is in conflict. Allowing other scheduler to proceed. Exiting')
+        exit()
 def sbatchjobs(files):
     for f in files:
         realp = op.realpath(f) # find the file to which the symlink file is linked
@@ -66,7 +82,7 @@ def sbatchjobs(files):
 def main(DIR):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
-    x = sq("squeue -u %(user)s | grep -v scaff | wc -l" % globals()) # number of genotyping jobs in the queue
+    x = sq("squeue -u %(user)s | grep -v scatter | wc -l" % globals()) # number of genotyping jobs in the queue
     print ('queue length = ',x)
     if x < qthresh: # if there is room in the queue
         print('scheduler not running')
@@ -82,8 +98,21 @@ def main(DIR):
         else:
             print('no files to sbatch')
     else:
-        print('scheduler was not running, but no room in queue' )
+        print('genotyping_scheduler was not running, but no room in queue' )
     delsched(scheduler)
+def bigbrother(scheduler,DIR):
+    # if the scheduler controller has died, remove the scheduler
+    with open(scheduler,'r') as o:
+        text = o.read().replace("\n","")
+    pid = text.split()[-1]
+    if not pid == '=':
+        pids = getpids()
+        if not pid in pids:
+            print('controller was not running, so the scheduler was destroyed')
+            delsched(scheduler)
+            main(DIR)
+        else:
+            print('controller is running, allowing it to proceed')
 ###
 
 # main
@@ -92,3 +121,4 @@ if not op.exists(scheduler): # if scheduler isn't running
     main(scheddir)
 else:
     print('scheduler was running')
+    bigbrother(scheduler,scheddir)
