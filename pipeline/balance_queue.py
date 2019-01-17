@@ -13,23 +13,27 @@ import os
 
 thisfile, phase = sys.argv
 
+def announceacctlens(accounts,fin):
+    os.system('echo %s job announcement' % ('final' if fin==True else 'first'))
+    for account in accounts:
+        os.system('echo %s jobs on %s' % (str(len(accounts[account])),account))
 def checksq(rt,phase):
     exitneeded = False
     if not type(rt) == list:
-        os.system('echo "type(sq) != list, exiting rescheduler.py"')
+        os.system('echo "type(sq) != list, exiting balance_queue.py"')
         exitneeded = True
     if len(rt) == 0:
-        os.system('echo "len(sq) == 0, exiting rescheduler.py"')
+        os.system('echo "len(sq) == 0, exiting balance_queue.py"')
         exitneeded = True
     for s in rt:
         if not s == '':
             if 'socket' in s.lower():
-                os.system('echo "socket in sq return, exiting rescheduler.py"')
+                os.system('echo "socket in sq return, exiting balance_queue.py"')
                 exitneeded = True
             try:
                 assert int(s.split()[0]) == float(s.split()[0])
             except:
-                os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
+                os.system('echo "could not assert int == float, %s"' % (s[0]))
                 exitneeded = True
     if exitneeded == True:
         os.system('echo slurm screwed something up for balanace_queue.py %s, lame' % phase)
@@ -38,14 +42,15 @@ def checksq(rt,phase):
         return rt
 def getsq(phase):
     SQ = os.popen('''squeue -u lindb -t "PD" | grep %s | grep Priority''' % phase).read().split("\n")
+    SQ = [s for s in SQ if not s == '']
     if len(SQ) > 0:
         return checksq(SQ,phase)
     else:
         os.system('echo no jobs in queue to balance')
         exit()
 def adjustjob(acct, jobid):
-    os.system('scontrol update Account=%s_cpu jobid=%s' % (acct, str(jobid)) )
-def getaccounts(SQ):
+    os.system('scontrol update Account=%s_cpu JobId=%s' % (acct, str(jobid)) )
+def getaccounts(SQ,stage):
     accounts = {}
     for q in SQ:
         if not q == '':
@@ -56,8 +61,9 @@ def getaccounts(SQ):
             if not account in accounts:
                 accounts[account] = {}
             accounts[account][pid] = splits
-    if len(accounts) == 3: # all accounts have low priority
+    if len(accounts.keys()) == 3 and stage != 'final': # all accounts have low priority
         os.system('echo all accounts have low priority, leaving queue as-is')
+        announceacctlens(accounts,True)
         exit()
     return accounts
 def getbalance(accounts,num):
@@ -65,13 +71,13 @@ def getbalance(accounts,num):
     for account in accounts:
         sums += len(accounts[account].keys())
     bal = math.ceil(sums/num)
-    print('bal%i = ' % num,bal)
+    os.system('echo bal%i %i= ' % (num,bal))
     return bal
 def checknumaccts(accts,checking,mc):
     # len(accounts) will never == 2 after pop, since I checked for len(accounts) == 3
     if len(accts.keys()) == 0:
         if checking == 'RAC':
-            os.system('echo all jobs on RAC')
+            os.system('echo RAC has low priority status, skipping RAC as taker')
         else:
             os.system('echo moved %s jobs to RAC' % str(mc))
         exit()
@@ -79,9 +85,10 @@ def redistribute4G(accounts,bal):
     RAC = 'rrg-yeaman'
     if RAC in accounts:   # no need to redistribute to RAC if RAC has low priority
         accounts.pop(RAC) # drop RAC from list to redistribute, exit if nothing to redistribute
-        checknumaccts(accounts,'RAC')    # if all jobs are on RAC, exit
+        checknumaccts(accounts,'RAC','')    # if all jobs are on RAC, exit
         return accounts
     keys = list(accounts.keys())
+    os.system('echo before loop %s' % keys)
     for account in keys: 
         # distribute 4G jobs to RAC
         pids = list(accounts[account].keys())
@@ -95,6 +102,7 @@ def redistribute4G(accounts,bal):
                 mcount += 1
                 if mcount == bal:
                     break
+        os.system('echo "distributed {} jobs from {} to RAC"'.format(mcount,account))
         if len(accounts[account].keys()) == 0:
             accounts.pop(account)
     checknumaccts(accounts,'none',mcount) # if all jobs were redistributed to the RAC, exit
@@ -117,6 +125,8 @@ def givetotaker(giver,taker,accounts,bal):
     taken = 0
     pids = list(accounts[giver].keys())
     numtotake = len(pids) - bal
+    if bal == 1 and len(pids) == 1:
+        numtotake = 1
     printout = 'giver has {} jobs to give. (bal= {}). Giver ({}) is giving {} jobs to taker ({})'.format(len(pids),bal,giver,numtotake,taker)
     os.system('echo -e "\\t %s"' % printout)
     if numtotake > 0:
@@ -128,23 +138,19 @@ def givetotaker(giver,taker,accounts,bal):
                 break
     else:
         os.system('echo -e "\t giver sees that taker has enough, so giver is not giving"')
-def announceacctlens(accounts,fin):
-    os.system('echo %s job announcement' % ('final' if fin==True else 'first'))
-    for account in accounts:
-        os.system('echo %s jobs on %s' % (str(len(accounts[account])),account))
 def main(phase):
     # get the queue
     sq = getsq(phase)
 
     # get per-account counts of jobs in Priority pending status, exit if all accounts have low priority
-    accts = getaccounts(sq)
+    accts = getaccounts(sq,'')
     announceacctlens(accts,False)
     
-    # figure out how many to balance remaining
-    balance = getbalance(accts,3)
+#     # figure out how many to balance remaining
+#     balance = getbalance(accts,3)
 
-    # redistribute 4G jobs to RAC unless RAC has low priority, exit if all jobs redistributed or no jobs to redistribute
-    accts = redistribute4G(accts,balance)
+#     # redistribute 4G jobs to RAC unless RAC has low priority, exit if all jobs redistributed or no jobs to redistribute
+#     accts = redistribute4G(accts,balance)
     
     # figure out which account to add to
     giver, taker = gettaker(accts)
@@ -154,7 +160,7 @@ def main(phase):
     givetotaker(giver,taker,accts,balance)
                               
     # announce final job counts
-    announceacctlens(getaccounts(getsq(phase)),True)
+    announceacctlens(getaccounts(getsq(phase),'final'),True)
     
 main(phase)
     
