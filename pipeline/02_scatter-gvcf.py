@@ -59,13 +59,13 @@ print ('ploidy =',ploidy)
 # create sh files
 shfiles = []
 shcount = 0
-scafdir = op.join(pardir,'intervals')
-# if ploidy > 2: #poolseq
-#     print ("this is a poolseq file")
-#     scafdir = op.join(pardir,'intervals/pooled')
-# else:
-#     print ("this is an individual's file")
-#     scafdir = op.join(pardir,'intervals/individual')
+# scafdir = op.join(pardir,'intervals')
+if ploidy > 2: #poolseq
+    print ("this is a poolseq file")
+    scafdir = op.join(pardir,'intervals/pooled')
+else:
+    print ("this is an individual's file")
+    scafdir = op.join(pardir,'intervals/individual')
     
 scaffiles = [f for f in fs(scafdir) if f.endswith('.list')]
 os.system('echo found %s intervalfiles' % str(len(scaffiles))) 
@@ -79,7 +79,7 @@ for scaff in scaffiles:
     text = '''#!/bin/bash
 #SBATCH --time=11:59:00
 #SBATCH --ntasks=1
-#SBATCH --mem-per-cpu=4000M
+#SBATCH --mem-per-cpu=8000M
 #SBATCH --job-name=%(s)s-%(samp)s-%(shz)s
 #SBATCH --output=%(s)s_%(samp)s_%%j.out 
 #SBATCH --mail-user=lindb@vcu.edu
