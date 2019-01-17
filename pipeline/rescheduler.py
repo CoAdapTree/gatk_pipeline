@@ -7,12 +7,13 @@
 ###
 
 ### imports
-import sys
 import os
-from os import path as op
-from os import listdir
+import sys
 import shutil
 import pickle
+from os import listdir
+from os import path as op
+from random import shuffle
 def ls(DIR):
     return sorted([f for f in listdir(DIR)])
 def fs (DIR):
@@ -26,7 +27,7 @@ thisfile, fqdir = sys.argv
 if fqdir.endswith("/"):
     fqdir = fqdir[:-1]
 dname = op.dirname(fqdir)
-print('dname=',dname)
+os.system('echo dname= %s' % dname)
 #print dirname
 DIR = op.join(dname,'shfiles/gvcf_shfiles') 
 #print DIR
@@ -45,19 +46,19 @@ def vcf2sh(v):
 def unlink(linkname):
     try:
         os.unlink(linkname)
-        print('unlinked %s' % linkname)
+        os.system('echo unlinked %s' % linkname)
     except:
-        print('no symlink to unlink: %s' % linkname)
+        os.system('echo no symlink to unlink: %s' % linkname)
         pass
 def addlink(args):
     trushfile,linkname = args
-    print('symlink from: %s' % linkname)
-    print('to: %s' % trushfile)
+    os.system('echo symlink from: %s' % linkname)
+    os.system('echo to: %s' % trushfile)
     if not op.exists(linkname):
         os.symlink(trushfile,linkname)
-        print('added symlink to queue: %s' % linkname)
+        os.system('echo added symlink to queue: %s' % linkname)
     else:
-        print('unable to create symlink from %s to %s' % (linkname,trushfile))     
+        os.system('echo unable to create symlink from %s to %s' % (linkname,trushfile))     
 def delrescheduler(rescheduler,createdrescheduler):
     if createdrescheduler == True:
         try:
@@ -97,6 +98,8 @@ def removeworker(DIR,trushfile):
             os.unlink(worker)
         except:
             os.system('echo could not unlink worker: %s' % worker)
+def getsq():
+    return os.popen("squeue -u lindb | grep 'R 2'").read().split("\n")
 def getpids(sq):
     pids = []
     for s in sq:
@@ -104,6 +107,20 @@ def getpids(sq):
             pid = s.split()[0]
             pids.append(pid)
     return pids
+def bigbrother(rescheduler):
+    # if the scheduler controller has died, remove the scheduler
+    with open(rescheduler,'r') as o:
+        text = o.read().replace("\n","")
+    pid = text.split()[-1]
+    if not pid == '=':
+        sq = getsq()
+        checksq(sq)
+        pids = getpids(sq)
+        if not pid in pids:
+            os.system('echo controller was not running, so the scheduler was destroyed')
+            delrescheduler(rescheduler,True)
+        else:
+            os.system('echo controller is running, allowing it to proceed')
 
 
 # identify outs that aren't running
@@ -125,13 +142,21 @@ outs = runs
 
 os.system('echo running rescheduler.py')
 if len(outs) > 0:
-#     print('outs =',outs)
+#     os.system('echo outs =',outs)
     if not op.exists(rescheduler):
         # reserve the rescheduler
         with open(rescheduler,'w') as o:
             jobid = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
             o.write("rescheduler id = %s" % jobid)
         createdrescheduler = True
+        # double check that the rescheduler is correct
+        with open(rescheduler,'r') as o:
+            text = o.read()
+        if not text.split()[-1] == '=':
+            if not text.split()[-1] == jobid:
+                os.system('echo another rescheduler is in conflict. Allowing other rescheduler to proceed. Exiting')
+                time.sleep(5)
+                exit()
 
         # look for errors in outfiles and resubmit the error-causing shfile using more mem or time
         for out in outs:
@@ -142,7 +167,8 @@ if len(outs) > 0:
             pid = op.basename(out).split(".out")[0].split("_")[1]
             if pid in pids:
                 continue
-                
+            if not op.exists(out):
+                continue
             os.system('echo -e \n')
             os.system('echo working on %s' % out)
             with open(out,'r') as OUT:
@@ -252,12 +278,12 @@ if len(outs) > 0:
 #                             sh = open(trushfile).read()
                             if '4000M' in sh:
                                 text = sh.replace("4000M","12000M")
-                                os.system('echo increasing mem to 4G')
+                                os.system('echo increasing mem to 12G')
                             elif '8000M' in sh:
                                 text = sh.replace('8000M','12000M')
                                 os.system('echo increasing mem to 12G')
                             elif '12000M' in sh:
-                                text = sh.replaec("12000M","20000M")
+                                text = sh.replace("12000M","20000M")
                                 os.system('echo increasing mem to 20G')
                             elif '20000M' in sh:
                                 text = sh.replace('20000M','30000M') # keep it in, i changed last if statment, was 8Gb->20Gb
@@ -296,7 +322,10 @@ if len(outs) > 0:
             
     else:
         os.system('echo rescheduler was running')
+        bigbrother(rescheduler)
 else:
     os.system('echo rescheduler found no outfiles to analyze or all outfiles are for jobs currently running')
 
 delrescheduler(rescheduler,createdrescheduler)
+if not createdrescheduler == False and op.exists(rescheduler):
+    bigbrother(rescheduler)
