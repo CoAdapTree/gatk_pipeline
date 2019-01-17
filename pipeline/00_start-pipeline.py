@@ -159,8 +159,8 @@ python 01a_trim-fastq.py %(fqdir)s %(ref)s
 
 # sbatch jobs
 print ('sbatching sh files')
-os.chdir(shdir)
-sbatch(shdir)
+# os.chdir(shdir)
+# sbatch(shdir)
 
 
 

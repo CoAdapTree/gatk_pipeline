@@ -155,10 +155,9 @@ module load fastp/0.19.5
         text = ''''''
 print ('shcount =',shcount)
         
-# qsub the files
+# # qsub the files
 os.chdir(shtrimDIR) # want sbatch outfiles in same folder as sh file
 for f in shfiles:
-##     !sbatch $f # jupyter es el mejor
     os.system('sbatch %s' % f)
     time.sleep(2)
-#####
+# #####
