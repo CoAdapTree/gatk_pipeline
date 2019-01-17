@@ -33,7 +33,7 @@ thisfile, fqdir, tbi = sys.argv
 def checktbi(tbi):
     if not op.exists(tbi):
         os.system('echo previous tbi did not finish: %s' % tbi) 
-        os.kill(os.getppid(), signal.SIGHUP)
+        os.kill(os.getppid(), signal.SIGHUP) # kill the job as if triggered by out-of-memory handler (oom-kill event)
 checktbi(tbi)
         
 os.system('source $HOME/.bashrc')
@@ -79,9 +79,14 @@ shuffle(shfiles)
 
 # run commands until I run out of time
 os.system('echo running gvcf_helper.py')
+badcount = 0
 if len(shfiles) > 0:
     for s in shfiles:
     #     print (s)
+        if badcount > 25:
+            # no need to have the job keep looking for other jobs if most other jobs have different reqs (mem, time)
+            os.system('echo exceeded badcount, exiting')
+            exit()
         reservation = op.join(workingdir,op.basename(s))
         if op.exists(s):
             try:
@@ -97,16 +102,17 @@ if len(shfiles) > 0:
 
             # only continue to run jobs that fit in the same memory allocation (dont waste resources if its going to fail)
             mem = int([x for x in o if 'mem' in x][0].split("=")[1].replace("M\n",""))
-#             if not mem == jobmem: # don't waste resources on jobs requiring less mem either
-            if mem > jobmem: # since I'm not using RAC for jobs > 4G, allow jobs with less mem to run
+            if not mem == jobmem: # don't waste resources on jobs requiring less mem either, will dec prio too if running high mem unnecessarily
                 os.system('echo file does not match mem limit')
                 shutil.move(reservation,s) # put the job back in the queue
+                badcount += 1
                 continue
             # only continue to run jobs that might fit in same time allocation
             TIME = int([x for x in o if 'time' in x][0].split("=")[1].split(':')[0])
             if TIME > jobtime:
                 os.system('echo file exceeds necessary time')
                 shutil.move(reservation,s)
+                badcount += 1
                 continue
 
             os.system('echo file is ok to proceed')
@@ -125,7 +131,7 @@ if len(shfiles) > 0:
                     # make sure the command executed until completion, else kill the job to be swept by rescheduler.py
                     vcf = cmd.split()[-5]
                     tbi = vcf.replace(".gz",".gz.tbi")
-                    checktbi(tbi) # in case I exceeded mem
+                    checktbi(tbi) # in case I exceeded mem but did not trigger oom-kill by HPC
                     
                     pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
                     os.system('python %s %s' % (op.join(pipedir,'rescheduler.py'),
