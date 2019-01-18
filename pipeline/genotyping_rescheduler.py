@@ -123,6 +123,23 @@ def bigbrother(rescheduler):
             delrescheduler(rescheduler,True)
         else:
             print('controller is running, allowing it to proceed')
+def checktbis(shfile):
+    # if some of the previous files were created, no need in wasting time recreating them
+    with open(shfile,'r') as s:
+        t = s.read().split("\n")
+    for linenum,line in enumerate(t):
+        if line.startswith('gatk'):
+            vcf = [x for x in line.split() if x.endswith('.gz')][-1]
+            if op.exists("%s.tbi" % vcf):
+                t[linenum] = line.replace("gatk","#gatk")
+                print('changing')
+                print('\t%s' % line)
+                print('\t%s' % t[linenum])
+            else:
+                print('file does not exist: %s.tbi' % vcf)
+    text = '\n'.join(t)
+    with open(shfile,'w') as s:
+        s.write("%s" % text)
 
 
 # identify outs that aren't running
@@ -210,7 +227,8 @@ if len(outs) > 0:
                         for line in o[::-1]:
                             if line.startswith('reading') or line.startswith('shfile ='):
                                 trushfile = [x for x in line.split() if x.endswith('.sh')][0]
-                                os.system ('echo adjusting time of original sh file %s' % trushfile)
+                                os.system ('echo checking tbis of original sh file %s' % trushfile)
+                                checktbis(trushfile)
                                 # add job back to the queue 
                                 linkname = op.join(DIR,op.basename(trushfile))
                                 addlink((trushfile,linkname))
@@ -245,6 +263,9 @@ if len(outs) > 0:
                                     break
                                 with open(trushfile,'w') as o:
                                     o.write("%s" % text)
+                                # check to see which tbi files were made
+                                os.system ('echo checking tbis of original sh file %s' % trushfile)
+                                checktbis(trushfile)
                                 # add job back to the queue  
                                 linkname = op.join(DIR,op.basename(trushfile))
                                 addlink((trushfile,linkname))
@@ -270,22 +291,25 @@ if len(outs) > 0:
                                 text = sh.replace('4000M','6500M')
                                 os.system('echo increasing mem to 6.5G')
                             elif '6500M' in sh:
-                                text = sh.replace('6500M','15000M')
+                                text = sh.replace('6500M','12000M')
                                 os.system('echo increasing mem to 15G')
                             elif '15000M' in sh:
-                                text = sh.replace('15000M','30000M')
+                                text = sh.replace('12000M','20000M')
                                 os.system('echo increasing mem to 30G')
                             elif '30000M' in sh:
-                                text = sh.replace('30000M','50000M')
+                                text = sh.replace('20000M','30000M')
                                 os.system('echo increasing mem to 50G')
                             elif '50000M' in sh:
-                                text = sh.replace('50000M','100000M')
+                                text = sh.replace('30000M','50000M')
                                 os.system('echo increasing mem to 100G')
                             elif '100000M' in sh:
-                                text = sh.replace('100000M','120000M')
+                                text = sh.replace('50000M','120000M')
                                 os.system('echo increasing mem to 120G')
                             with open(trushfile,'w') as o:
                                 o.write("%s" % text)
+                            # check to see which tbi files were made
+                            os.system ('echo checking tbis of original sh file %s' % trushfile)
+                            checktbis(trushfile)
                             # add job back to the queue  
                             addlink((trushfile,linkname))
                             # try and remove worker from workingdir
