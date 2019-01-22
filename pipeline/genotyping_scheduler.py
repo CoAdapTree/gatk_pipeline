@@ -33,7 +33,7 @@ print("scheddir=",scheddir)
 assert op.exists(scheddir)
 scheduler = op.join(scheddir,'scheduler.txt')
 os.chdir(scheddir)
-qthresh   = 10
+qthresh   = 400
 user = os.popen("echo $USER").read().replace("\n","")
 ###
 
@@ -64,9 +64,10 @@ def startscheduler(scheduler):
     # double check that the scheduler is correct
     with open(scheduler,'r') as o:
         text = o.read()
-    if not text.split()[-1] == jobid:
-        os.system('echo another scheduler is in conflict. Allowing other scheduler to proceed. Exiting')
-        exit()
+    if not text.split()[-1] == '=':
+        if not text.split()[-1] == jobid:
+            os.system('echo another scheduler is in conflict. Allowing other scheduler to proceed. Exiting')
+            exit()
 def sbatchjobs(files):
     for f in files:
         realp = op.realpath(f) # find the file to which the symlink file is linked
@@ -99,6 +100,8 @@ def main(DIR):
             print('no files to sbatch')
     else:
         print('genotyping_scheduler was not running, but no room in queue' )
+    pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
+    os.system('python %s geno' % (op.join(pipedir,'balance_queue.py')))
     delsched(scheduler)
 def bigbrother(scheduler,DIR):
     # if the scheduler controller has died, remove the scheduler
