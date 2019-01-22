@@ -39,9 +39,32 @@ user = os.popen("echo $USER").read().replace("\n","")
 
 ### defs
 print('running scheduler.py')
+def checksq(rt):
+    exitneeded = False
+    if not type(rt) == list:
+        os.system('echo "type(sq) != list, exiting rescheduler.py"')
+        exitneeded = True
+    if len(rt) == 0:
+        os.system('echo "len(sq) == 0, exiting rescheduler.py"')
+        exitneeded = True
+    for s in rt:
+        if not s == '':
+            if 'socket' in s.lower():
+                os.system('echo "socket in sq return, exiting rescheduler.py"')
+                exitneeded = True
+            try:
+                assert int(s.split()[0]) == float(s.split()[0])
+            except:
+                os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
+                exitneeded = True
+    if exitneeded == True:
+        delrescheduler(rescheduler,globals()['createdrescheduler'])
+        exit()
 def sq(command):
     # how many jobs are running
-    return int(os.popen(str(command)).read().replace("\n",""))
+    q = os.popen(str(command)).read().split("\n")
+    checksq(q)
+    return len(q)
 def delsched(scheduler):
     # stop scheduler
     try:
@@ -83,7 +106,7 @@ def sbatchjobs(files):
 def main(DIR):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
-    x = sq("squeue -u %(user)s | grep -v scatter | wc -l" % globals()) # number of genotyping jobs in the queue
+    x = sq("squeue -u %(user)s | grep genotype " % globals()) # number of genotyping jobs in the queue
     print ('queue length = ',x)
     if x < qthresh: # if there is room in the queue
         print('scheduler not running')
