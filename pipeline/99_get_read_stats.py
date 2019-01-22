@@ -90,12 +90,14 @@ for j in sorted(data):
 
 # get counts from downstream
 os.system('echo getting bam counts')
-key = ['mapped_bamfile','filtered_bamfile','dedup_bamfile']
+# key = ['mapped_bamfile','filtered_bamfile','dedup_bamfile']
+key = ['mapped_bamfile','dedup_bamfile']
 for k in key:
     readinfo[k] = OrderedDict()
 for p in pooldirs:
     os.system('echo %s' % p)
-    for i,d in enumerate(['sorted_bamfiles','filtered_indexed_sorted_bamfiles','dedup_rg_filtered_indexed_sorted_bamfiles']):
+#     for i,d in enumerate(['sorted_bamfiles','filtered_indexed_sorted_bamfiles','dedup_rg_filtered_indexed_sorted_bamfiles']):
+    for i,d in enumerate(['sorted_bamfiles','dedup_rg_filtered_indexed_sorted_bamfiles']):
         os.system('echo %s' % d)
         DIR = op.join(p,d)
         assert op.exists(DIR)
@@ -105,7 +107,7 @@ for p in pooldirs:
                 samp = op.basename(b).split("_R1R2")[0].split(".")[-1]
             else:
                 samp = op.basename(b).replace("_rd.bam","")
-            assert samp in samps
+#             assert samp in samps ### change back - commented because some samps were trimmed elsewhere for this round
 #             readinfo[key[i]][samp] = 'somenum' # for testing
             num = os.popen('samtools view -@ %(engines)s -c %(b)s' % locals()).read().replace("\n","")
             readinfo[key[i]][samp] = num
