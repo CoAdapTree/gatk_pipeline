@@ -60,22 +60,22 @@ for i,snp in enumerate(snpfiles):
 os.system('echo there are %s keys in combdict' % str(len(combdict.keys())))
 for k,kfiles in combdict.items():
     os.system('echo %s %s' % (k,str(len(kfiles))))
-
 # write the sh files
 shfiles = []
 fcats   = []
 for lib in combdict.keys():
-    if len(combdict[lib]) in [500,1000]:
+    if len(combdict[lib]) in [50289]: # for now this is for Doug fir, will need to change for other spp
+        os.system('echo creating sbatch file')
         catout   = op.join(catdir,"%s_concatenated_snps.vcf.gz" % lib)
         filtout  = op.join(filtdir,"%s_filtered_concatenated_snps.vcf.gz" % lib)
         firstlib = lib.split("---")[0]
         ref      = poolref[firstlib]
         # I should have made scaffols be zfill(4) not zfill(3)
-        files    = " ".join([snp for snp in sorted(combdict[lib]) if '1000' not in snp])
+        files    = " ".join([snp for snp in sorted(combdict[lib]) if '1000' not in snp])  # I can remove the if-condition once we're done with the pseudo ref
         # (bcftools needs the input files to be sorted)
         files    = files + ' %s ' % [snp for snp in combdict[lib] if '1000' in snp][0] 
         text = '''#!/bin/bash
-#SBATCH --time=02:59:59
+#SBATCH --time=11:59:59
 #SBATCH --mem=15000M
 #SBATCH --nodes=1
 #SBATCH --ntasks=32
@@ -97,7 +97,7 @@ gatk VariantFiltration -R %(ref)s -V %(catout)s -O %(filtout)s --filter-expressi
 
 ''' % locals()
         file = op.join(shdir,"%s-concat.sh" % lib)
-        if not op.exists(filtout): # so I can run this when files begin to finish from 03a and 03b
+        if not op.exists(filtout): # so I can run this when files begin to finish from 03_genotype.py
             if not op.exists(filtout.replace(".gz",".gz.tbi")):
                 with open(file,'w') as o:
                     o.write("%s" % text)

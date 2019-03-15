@@ -11,9 +11,9 @@
 ##SBATCH --job-name=99_get_read_stats
 ##SBATCH --output=99_get_read_stats---%j.out
 ##source $HOME/.bashrc
-##cd $HOME/pipeline
+##cd $HOME/gatk_pipeline
 ##module load samtools/1.9
-##cd $HOME/pipeline
+##cd $HOME/gatk_pipeline
 ##python 99_get_read_stats.py $1 32
 
 ### imports

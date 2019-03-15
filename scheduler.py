@@ -27,7 +27,7 @@ print("DIR=",DIR)
 assert op.exists(DIR)
 scheduler = op.join(DIR,'scheduler.txt')
 os.chdir(DIR)
-qthresh   = 1000
+qthresh   = 700
 user = os.popen("echo $USER").read().replace("\n","")
 ###
 
@@ -38,25 +38,26 @@ def checksq(rt):
     if not type(rt) == list:
         os.system('echo "type(sq) != list, exiting rescheduler.py"')
         exitneeded = True
-    if len(rt) == 0:
-        os.system('echo "len(sq) == 0, exiting rescheduler.py"')
-        exitneeded = True
+    count = 0
     for s in rt:
-        if not s == '':
-            if 'socket' in s.lower():
-                os.system('echo "socket in sq return, exiting rescheduler.py"')
-                exitneeded = True
-            try:
-                assert int(s.split()[0]) == float(s.split()[0])
-            except:
-                os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
-                exitneeded = True
+        if 'socket' in s.lower():
+            os.system('echo "socket in sq return, exiting rescheduler.py"')
+            exitneeded = True
+        try:
+            assert int(s.split()[0]) == float(s.split()[0])
+            count += 1
+        except:
+            os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
+            exitneeded = True
+    if count == 0 and len(rt) > 0:
+        os.system('echo never asserted pid, exiting rescheduler.py')
+        exitneeded = True
     if exitneeded == True:
-        delrescheduler(rescheduler,globals()['createdrescheduler'])
+        delsched(globals()['scheduler'])
         exit()
 def sq(command):
     # how many jobs are running
-    q = os.popen(str(command)).read().split("\n")
+    q = [x for x in os.popen(str(command)).read().split("\n") if not x == '']
     checksq(q)
     return len(q)
 def delsched(scheduler):
@@ -69,7 +70,7 @@ def getpids():
     pids = os.popen('squeue -u lindb -o "%i"').read().split("\n")
     pids = [p for p in pids if not p == '']
     if len(pids) != len(set(pids)):
-        print('len !- luni pids')
+        print('len != luni pids')
         delsched(scheduler)
         exit()
     return pids[1:]
@@ -118,7 +119,7 @@ def main(DIR):
             print('no files to sbatch')
     else:
         print('scheduler was not running, but no room in queue' )
-    pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
+    pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n","")
     os.system('python %s scatter' % (op.join(pipedir,'balance_queue.py')))
     delsched(scheduler)
 def bigbrother(scheduler,DIR):

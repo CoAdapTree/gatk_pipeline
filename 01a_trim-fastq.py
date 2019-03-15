@@ -117,7 +117,7 @@ for s in seq_pairs:
     cmd  = '''fastp -i %(r1)s -o %(r1out)s -I %(r2)s -O %(r2out)s --disable_quality_filtering -g --cut_window_size 5 --cut_mean_quality 30 --n_base_limit 20 --length_required 75 -h %(html)s.html --cut_by_quality3 --thread 16 --json %(json)s.json --adapter_sequence AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC --adapter_sequence_r2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT > %(logfile)s
 
 
-cd $HOME/pipeline
+cd $HOME/gatk_pipeline
 # once finished, map using bwa mem 
 python 01b_bwa-map_rginfo_mark_build.py %(ref)s %(r1out)s %(r2out)s %(shdir)s %(shz)s           
 ''' % locals()

@@ -61,7 +61,8 @@ def getaccounts(SQ,stage):
             if not account in accounts:
                 accounts[account] = {}
             accounts[account][pid] = splits
-    if len(accounts.keys()) == 3 and stage != 'final': # all accounts have low priority
+#     if len(accounts.keys()) == 3 and stage != 'final': # all accounts have low priority ### use 3 when using RAC
+    if len(accounts.keys()) == 2 and stage != 'final': # all accounts have low priority   ### use 2 when not using RAC
         os.system('echo all accounts have low priority, leaving queue as-is')
         announceacctlens(accounts,True)
         exit()

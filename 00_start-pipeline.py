@@ -149,7 +149,7 @@ for fqdir in pooldirs:
 #SBATCH --mail-type=FAIL
 
 source $HOME/.bashrc
-cd $HOME/pipeline
+cd $HOME/gatk_pipeline
 
 python 01a_trim-fastq.py %(fqdir)s %(ref)s
 ''' % locals()

@@ -132,7 +132,7 @@ samtools flagstat %(dupfile)s > %(dupflag)s
 java -jar $EBROOTPICARD/picard.jar BuildBamIndex I=%(dupfile)s
 
 # call GVCF
-cd $HOME/pipeline
+cd $HOME/gatk_pipeline
 python 02_scatter-gvcf.py %(rgfile)s %(fqdir)s %(ref)s %(strt)s
 ''' % locals()
 

@@ -92,11 +92,11 @@ source $HOME/.bashrc
 module load gatk/4.0.8.1
 
 # resubmit jobs with errors
-cd $HOME/pipeline
+cd $HOME/gatk_pipeline
 python rescheduler.py %(fqdir)s
 
 # fill up the queue
-cd $HOME/pipeline
+cd $HOME/gatk_pipeline
 python scheduler.py %(fqdir)s
 
 # call variants
@@ -104,7 +104,7 @@ gatk HaplotypeCaller --sample-ploidy %(ploidy)s -R %(ref)s --genotyping-mode DIS
 
 # keep running jobs until time runs out
 echo 'getting help from gvcf_helper'
-cd $HOME/pipeline
+cd $HOME/gatk_pipeline
 python gvcf_helper.py %(fqdir)s %(tbi)s
 
 
@@ -118,7 +118,7 @@ python gvcf_helper.py %(fqdir)s %(tbi)s
 
 
 # submit to scheduler
-pipedir = os.popen('echo $HOME/pipeline').read().replace("\n","")
+pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n","")
 os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),fqdir))
 
 

@@ -3,16 +3,17 @@
 ###
 
 ###
-# usage rescheduler.py /path/to/parentdir-used-in-00_start-pipeline.py/
+# usage rescheduler.py /path/to/fq.gzfiles/folder/
 ###
 
 ### imports
-import sys
 import os
-from os import path as op
-from os import listdir
+import sys
 import shutil
 import pickle
+from os import listdir
+from os import path as op
+from random import shuffle
 def ls(DIR):
     return sorted([f for f in listdir(DIR)])
 def fs (DIR):
@@ -20,19 +21,20 @@ def fs (DIR):
 ###
 
 ### args
-thisfile, parentdir = sys.argv
+thisfile, fqdir = sys.argv
 ###
 
-if parentdir.endswith("/"):
-    parentdir = parentdir[:-1]
-print('parentdir=',parentdir)
+if fqdir.endswith("/"):
+    fqdir = fqdir[:-1]
+dname = op.dirname(fqdir)
+os.system('echo dname= %s' % dname)
 #print dirname
-DIR = op.join(parentdir,'shfiles/supervised/select_variants_within_and_across') 
+DIR = op.join(dname,'shfiles/gvcf_shfiles') 
 #print DIR
 os.chdir(DIR)
 outs = [f for f in fs(DIR) if f.endswith('out') and 'checked' not in f and 'swp' not in f]
 rescheduler = op.join(DIR,'rescheduler.txt')
-samp2pool = pickle.load(open(op.join(parentdir,'samp2pool.pkl'),'rb'))
+samp2pool = pickle.load(open(op.join(dname,'samp2pool.pkl'),'rb'))
 def vcf2sh(v):
     pooldir  = op.dirname(op.dirname(v))
     gvcfdir  = op.join(pooldir,'shfiles/gvcf_shfiles')
@@ -44,19 +46,19 @@ def vcf2sh(v):
 def unlink(linkname):
     try:
         os.unlink(linkname)
-        print('unlinked %s' % linkname)
+        os.system('echo unlinked %s' % linkname)
     except:
-        print('no symlink to unlink: %s' % linkname)
+        os.system('echo no symlink to unlink: %s' % linkname)
         pass
 def addlink(args):
     trushfile,linkname = args
-    print('symlink from: %s' % linkname)
-    print('to: %s' % trushfile)
+    os.system('echo symlink from: %s' % linkname)
+    os.system('echo to: %s' % trushfile)
     if not op.exists(linkname):
         os.symlink(trushfile,linkname)
-        print('added symlink to queue: %s' % linkname)
+        os.system('echo added symlink to queue: %s' % linkname)
     else:
-        print('unable to create symlink from %s to %s' % (linkname,trushfile)) 
+        os.system('echo unable to create symlink from %s to %s' % (linkname,trushfile))     
 def delrescheduler(rescheduler,createdrescheduler):
     if createdrescheduler == True:
         try:
@@ -65,32 +67,28 @@ def delrescheduler(rescheduler,createdrescheduler):
         except:
             os.system('echo could not remove rescheduler')
             pass
-def getallpids():
-    pids = os.popen('squeue -u lindb -o "%i"').read().split("\n")
-    pids = [p for p in pids if not p == '']
-    if len(pids) != len(set(pids)):
-        print('len !- luni pids')
-        delrescheduler(rescheduler,globals()['createdrescheduler'])
-        exit()
-    return pids[1:]
 def checksq(rt):
     exitneeded = False
     if not type(rt) == list:
         os.system('echo "type(sq) != list, exiting rescheduler.py"')
         exitneeded = True
-    if len(rt) == 0:
-        os.system('echo "len(sq) == 0, exiting rescheduler.py"')
-        exitneeded = True
+#     if len(rt) == 0:
+#         os.system('echo "len(sq) == 0, exiting rescheduler.py"')
+#         exitneeded = True
+    count = 0
     for s in rt:
-        if not s == '':
-            if 'socket' in s.lower():
-                os.system('echo "socket in sq return, exiting rescheduler.py"')
-                exitneeded = True
-            try:
-                assert int(s.split()[0]) == float(s.split()[0])
-            except:
-                os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
-                exitneeded = True
+        if 'socket' in s.lower():
+            os.system('echo "socket in sq return, exiting rescheduler.py"')
+            exitneeded = True
+        try:
+            assert int(s.split()[0]) == float(s.split()[0])
+            count += 1
+        except:
+            os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
+            exitneeded = True
+    if count == 0 and len(rt) > 0:
+        os.system('echo never asserted pid, exiting rescheduler.py')
+        exitneeded = True
     if exitneeded == True:
         delrescheduler(rescheduler,globals()['createdrescheduler'])
         exit()
@@ -104,6 +102,8 @@ def removeworker(DIR,trushfile):
             os.unlink(worker)
         except:
             os.system('echo could not unlink worker: %s' % worker)
+def getsq():
+    return [x for x in os.popen("squeue -u lindb | grep 'R 2'").read().split("\n") if not x == '']
 def getpids(sq):
     pids = []
     for s in sq:
@@ -117,48 +117,36 @@ def bigbrother(rescheduler):
         text = o.read().replace("\n","")
     pid = text.split()[-1]
     if not pid == '=':
-        pids = getallpids()
+        sq = getsq()
+        checksq(sq)
+        pids = getpids(sq)
         if not pid in pids:
-            print('controller was not running, so the scheduler was destroyed')
+            os.system('echo controller was not running, so the scheduler was destroyed')
             delrescheduler(rescheduler,True)
         else:
-            print('controller is running, allowing it to proceed')
-def checktbis(shfile):
-    # if some of the previous files were created, no need in wasting time recreating them
-    with open(shfile,'r') as s:
-        t = s.read().split("\n")
-    for linenum,line in enumerate(t):
-        if line.startswith('gatk'):
-            vcf = [x for x in line.split() if x.endswith('.gz')][-1]
-            if op.exists("%s.tbi" % vcf):
-                t[linenum] = line.replace("gatk","#gatk")
-                print('changing')
-                print('\t%s' % line)
-                print('\t%s' % t[linenum])
-            else:
-                print('file does not exist: %s.tbi' % vcf)
-    text = '\n'.join(t)
-    with open(shfile,'w') as s:
-        s.write("%s" % text)
+            os.system('echo controller is running, allowing it to proceed')
 
 
 # identify outs that aren't running
-sq = os.popen("squeue -u lindb | grep 'R 2'").read().split("\n")
-#print(sq)
+createdrescheduler = False
+sq = getsq()
+    # check sq return with if statements:
+    # hopefully will solve problem when I get: "slurm_load_jobs error: Socket timed out on send/recv operation"
+    # not sure if the bash error is being returned to sq; it doesn't happen to often, bash error is in outfile
 checksq(sq)
+#print(sq)
 pids = getpids(sq)
 #print(pids)
 runs = []
 for out in outs:
-    pid = op.basename(out).split(".out")[0].split("---")[-1]
+    pid = op.basename(out).split(".out")[0].split("_")[-1]
     if pid not in pids:
         runs.append(out)
 outs = runs
 
 os.system('echo running rescheduler.py')
-createdrescheduler = False
 if len(outs) > 0:
-#     print('outs =',outs)
+#     os.system('echo outs =',outs)
     if not op.exists(rescheduler):
         # reserve the rescheduler
         with open(rescheduler,'w') as o:
@@ -177,13 +165,14 @@ if len(outs) > 0:
         # look for errors in outfiles and resubmit the error-causing shfile using more mem or time
         for out in outs:
             #check again to see if job is running
-            sq = os.popen("squeue -u lindb | grep 'R 2'").read().split("\n")
+            sq = getsq()
             checksq(sq)
             pids = getpids(sq)
-            pid = op.basename(out).split(".out")[0].split("---")[1]
+            pid = op.basename(out).split(".out")[0].split("_")[1]
             if pid in pids:
                 continue
-                
+            if not op.exists(out):
+                continue
             os.system('echo -e \n')
             os.system('echo working on %s' % out)
             with open(out,'r') as OUT:
@@ -194,13 +183,13 @@ if len(outs) > 0:
             founderror = False
             cancelled = False
             for line in o[-20:]: # look for an error message
-                if 'oom-kill' in line  or 'error' in line:
+                if 'oom-kill' in line or 'error' in line:
                     if not 'no mem or time errors found in' in line:
                         os.system ('echo found an error')
                         founderror = True
                         break
             if founderror == True:
-                for test in o[-20:]: # look for a time error 
+                for test in o[-20:]: # look for a timeout error 
                     if 'time limit' in test.lower() or 'cancelled' in test.lower():
                         timelimit = True
                         if 'cancelled' in test.lower():
@@ -215,34 +204,41 @@ if len(outs) > 0:
                     # determine if its original or gvcf_helper
                     helped = False
                     for line in o[::-1]:
-                        if 'getting help from genotyping_helper' in line and 'echo' not in line:
+                        if 'getting help from gvcf_helper' in line and 'echo' not in line:
                             # we dont necessarily need to increase time if last call was due to gvcf_helper.py
                             helped = True
-                            os.system('echo helped by genotyping_helper =%s' % helped)
+                            os.system('echo helped by gvcf_helper =%s' % helped)
                             break
                     if helped == True or cancelled == True: # if the job ended on a call from gvcf_helper.py or was cancelled
                         # no need to change time this first time
                         os.system('echo leaving orginal time as-is')
                         os.system('echo cancelled =%s' % cancelled)
                         for line in o[::-1]:
-                            if line.startswith('reading') or line.startswith('shfile ='):
-                                trushfile = [x for x in line.split() if x.endswith('.sh')][0]
-                                os.system ('echo checking tbis of original sh file %s' % trushfile)
-                                checktbis(trushfile)
-                                # add job back to the queue 
+                            if line.startswith('gatk HaplotypeCaller'):
+                                vcf = line.split()[-5]
+                                trushfile = vcf2sh(vcf)
                                 linkname = op.join(DIR,op.basename(trushfile))
+                                
+                                # add job back to the queue 
                                 addlink((trushfile,linkname))
+                                
                                 # remove worker from workingdir
                                 removeworker(DIR,trushfile)
-                                break  
+                                
+                                break
                     else:
-                        for line in o:
-                            # this was the call from the original sh file, need to change time
-                            if line.startswith('shfile ='):
+                        for line in o[::-1]:
+                            # this was the call from the original sh file
+                            if line.startswith('gatk HaplotypeCaller'):
                                 os.system ('echo adjusting time of original sh file')
-                                trushfile = [x for x in line.split() if x.endswith('.sh')][0]
+                                vcf = line.split()[-5]
+                                os.system('echo vcf file = %s' % vcf)
+                                trushfile = vcf2sh(vcf)
+
                                 os.system('echo linked to %s' % trushfile)
-                                sh = open(trushfile).read()
+                                with open(trushfile,'r') as O:
+                                    sh = O.read()
+#                                 sh = open(trushfile).read()
                                 if '00:00:05' in sh: # for debugging/testing
                                     text = sh.replace('00:00:05','02:59:00')
                                 elif '02:59:00' in sh:
@@ -261,14 +257,13 @@ if len(outs) > 0:
                                     os.system('echo cound not find replacement')
                                     os.system('cat %s' % trushfile)
                                     break
-                                with open(trushfile,'w') as o:
-                                    o.write("%s" % text)
-                                # check to see which tbi files were made
-                                os.system ('echo checking tbis of original sh file %s' % trushfile)
-                                checktbis(trushfile)
+                                with open(trushfile,'w') as O:
+                                    O.write("%s" % text)
+
                                 # add job back to the queue  
                                 linkname = op.join(DIR,op.basename(trushfile))
                                 addlink((trushfile,linkname))
+                                
                                 break
                 else: # there's a mem oerror
                     edited = True
@@ -277,46 +272,52 @@ if len(outs) > 0:
                     os.system('echo due to mem limit')
                     # find the last job and resubmit with more mem
                     for line in o[::-1]:
-                        if line.startswith('reading') or line.startswith('shfile ='):
-                            trushfile = [x for x in line.split() if x.endswith('.sh')][0]
-                            linkname = op.join(DIR,op.basename(trushfile))
+                        if line.startswith('gatk HaplotypeCaller'):
+                            vcf = line.split()[-5]
+                            trushfile = vcf2sh(vcf)
                             os.system('echo adjusting mem limit of: %s' % trushfile)
-                            os.system('echo linked to %s' % linkname)
-                            with open(trushfile) as trush:
-                                sh = trush.read()
-                            if '2000M' in sh:
-                                text = sh.replace("2000M","4000M")
-                                os.system('echo increasing mem to 4G')
+                            os.system('echo linked to %s' % trushfile)
+                            with open(trushfile,'r') as O:
+                                sh = O.read()
+#                             sh = open(trushfile).read()
                             if '4000M' in sh:
-                                text = sh.replace('4000M','6500M')
-                                os.system('echo increasing mem to 6.5G')
+                                text = sh.replace("4000M","12000M")
+                                os.system('echo increasing mem to 12G')
                             elif '6500M' in sh:
                                 text = sh.replace('6500M','12000M')
-                                os.system('echo increasing mem to 15G')
-                            elif '15000M' in sh:
-                                text = sh.replace('12000M','20000M')
+                                os.system('echo increasing mem to 12G')
+                            elif '8000M' in sh:
+                                text = sh.replace('8000M','12000M')
+                                os.system('echo increasing mem to 12G')
+                            elif '12000M' in sh:
+                                text = sh.replace("12000M","20000M")
+                                os.system('echo increasing mem to 20G')
+                            elif '20000M' in sh:
+                                text = sh.replace('20000M','30000M') # keep it in, i changed last if statment, was 8Gb->20Gb
                                 os.system('echo increasing mem to 30G')
                             elif '30000M' in sh:
-                                text = sh.replace('20000M','30000M')
+                                text = sh.replace('30000M','50000M')
                                 os.system('echo increasing mem to 50G')
                             elif '50000M' in sh:
-                                text = sh.replace('30000M','50000M')
+                                text = sh.replace('50000M','100000M')
                                 os.system('echo increasing mem to 100G')
                             elif '100000M' in sh:
-                                text = sh.replace('50000M','120000M')
+                                text = sh.replace('100000M','120000M')
                                 os.system('echo increasing mem to 120G')
-                            with open(trushfile,'w') as o:
-                                o.write("%s" % text)
-                            # check to see which tbi files were made
-                            os.system ('echo checking tbis of original sh file %s' % trushfile)
-                            checktbis(trushfile)
+                            with open(trushfile,'w') as O:
+                                O.write("%s" % text)
+                            
                             # add job back to the queue  
+                            linkname = op.join(DIR,op.basename(trushfile))
                             addlink((trushfile,linkname))
-                            # try and remove worker from workingdir
+                            
+                            # remove worker from workingdir
                             removeworker(DIR,trushfile)
+
                             break
             else:
                 os.system('echo no mem or time errors found in %s' % out)
+
             # move the .out file to a new name so rescheduler doesn't look at it again
             dst = out.replace(".out","_checked.out")
             try:
@@ -325,10 +326,10 @@ if len(outs) > 0:
             except OSError as e:
                 os.system('echo could not move outfile to noerror.out: %s' % out)
                 pass
+            
     else:
         os.system('echo rescheduler was running')
         bigbrother(rescheduler)
-        
 else:
     os.system('echo rescheduler found no outfiles to analyze or all outfiles are for jobs currently running')
 
