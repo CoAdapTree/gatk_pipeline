@@ -1,6 +1,6 @@
 """
 ### usage
-# usage: 00_start-pipeline.py -p PARENTDIR [-e EMAIL [-n EMAIL_OPTIONS]]
+# usage: 00_start-gatk_pipeline.py -p PARENTDIR [-e EMAIL [-n EMAIL_OPTIONS]]
 ###
 """
 
@@ -20,7 +20,7 @@ def create_sh(pooldirs, poolref):
         ref = poolref[pool]
         print('\tsending pooldir and ref to 01_trim-fastq.py')
         subprocess.call([shutil.which('python'),
-                         op.join(os.environ['HOME'], 'pipeline/01_trim-fastq.py'),
+                         op.join(os.environ['HOME'], 'gatk_pipeline/01_trim-fastq.py'),
                          pooldir,
                          ref])
     print("\n")
@@ -36,7 +36,7 @@ def askforinput():
         else:
             print(Bcolors.FAIL + "Please respond with 'yes' or 'no'" + Bcolors.ENDC)
             if inp == 'no':
-                print('exiting 00_start-pipeline.py')
+                print('exiting 00_start-gatk_pipeline.py')
                 exit()
 
 
@@ -87,17 +87,18 @@ def make_pooldirs(data, parentdir):
         DIR = op.join(parentdir, p)
         if op.exists(DIR):
             print("The pooldir already exists, this could overwrite previous data: %s" % DIR)
-            print("Do you want to exit?")
+            print("Do you want to proceed?")
             askforinput()
         pooldirs.append(makedir(DIR))
+        makedir(op.join(DIR, 'shfiles'))
     return pooldirs
 
 
-def create_crisp_bedfiles(poolref):
-    # create bedfiles for crisp
-    print(Bcolors.BOLD + "\ncreating CRISP bedfiles" + Bcolors.ENDC)
-    for ref in uni(poolref.values()):
-        create_bedfiles.main('create_bedfiles.py', ref)
+# def create_bedfiles(poolref):
+#     # create bedfiles for crisp
+#     print(Bcolors.BOLD + "\ncreating bedfiles" + Bcolors.ENDC)
+#     for ref in uni(poolref.values()):
+#         create_bedfiles.main('create_bedfiles.py', ref)
 
 
 def read_datatable(parentdir):
@@ -105,7 +106,7 @@ def read_datatable(parentdir):
     datatable = op.join(parentdir, 'datatable.txt')
     if not op.exists(datatable):
         print(Bcolors.FAIL + '''FAIL: the datatable is not in the necessary path: %s
-FAIL: exiting 00_start-pipeline.py''' % datatable + Bcolors.ENDC)
+FAIL: exiting 00_start-gatk_pipeline.py''' % datatable + Bcolors.ENDC)
         sys.exit(3)
     print(Bcolors.BOLD + 'reading datatable, getting fastq info' + Bcolors.ENDC)
     data = pd.read_csv(datatable, sep='\t')
@@ -149,7 +150,7 @@ different pool assignments: %s' % samp + Bcolors.ENDC)
             ref = data.loc[row, 'ref']
             if not op.exists(ref):
                 print('ref for %s does not exist in path: %s' % (samp, ref))
-                print('exiting %s' % '00_start-pipeline.py')
+                print('exiting 00_start-gatk_pipeline.py')
                 exit()
             needed = []
             for suffix in ['.dict', '.amb', '.ann', '.bwt', '.fai', '.pac', '.sa']:
@@ -164,6 +165,18 @@ please create these files' +
                 for n in needed:
                     print(Bcolors.FAIL + n + Bcolors.ENDC)
                 print('exiting')
+                exit()
+            printneeded = False
+            intdir = op.join(op.dirname(ref), 'intervals')
+            if not op.exists(intdir):
+                printneeded = True
+            elif len([f for f in fs(intdir) if '.list' in f]) == 0:
+                printneeded = True
+            if printneeded is True:
+                print(Bcolors.FAIL + 
+                      'FAIL: either the intervals dir doesn not exist or there are not interval.list files\
+\nFAIL: intdir should be here: %s' % intdir +
+                      Bcolors.ENDC)
                 exit()
             poolref[pool] = ref
         rginfo[samp] = {}
@@ -192,23 +205,23 @@ def check_reqs():
     # check for assumed exports
     print(Bcolors.BOLD + '\nchecking for exported variables' + Bcolors.ENDC)
     for var in ['SLURM_ACCOUNT', 'SBATCH_ACCOUNT', 'SALLOC_ACCOUNT',
-                'CRISP_DIR', 'PYTHONPATH', 'SQUEUE_FORMAT']:
+                'PYTHONPATH', 'SQUEUE_FORMAT']:
         try:
             print('\t%s = %s' % (var, os.environ[var]))
         except KeyError:
             print('\tcould not find %s in exported vars\n\texport this var in $HOME/.bashrc so it can be used \
-later in pipeline\n\texiting 00_start-pipeline.py' % var)
+later in gatk_pipeline\n\texiting 00_start-gatk_pipeline.py' % var)
             exit()
-    # look for lofreq, make sure an environment can be activated (activation assumed to be in $HOME/.bashrc)
-    for exe in ['lofreq', 'activate']:
+    # make sure an environment can be activated (activation assumed to be in $HOME/.bashrc)
+    for exe in ['activate']:
         if distutils.spawn.find_executable(exe) is None:
-            print('\tcould not find %s in $PATH\nexiting 00_start-pipeline.py' % exe)
+            print('\tcould not find %s in $PATH\nexiting 00_start-gatk_pipeline.py' % exe)
             if exe == 'activate':
                 print('\t\t(the lack of activate means that the python env is not correctly installed)')
             exit()
     # make sure pipeline can be accessed via $HOME/pipeline
-    if not op.exists(op.join(os.environ['HOME'], 'pipeline')):
-        print('\tcould not find pipeline via $HOME/pipeline')
+    if not op.exists(op.join(os.environ['HOME'], 'gatk_pipeline')):
+        print('\tcould not find gatk_pipeline via $HOME/gatk_pipeline')
         exit()
     print('DONE!\n')
 
@@ -219,7 +232,7 @@ def check_pyversion():
     if not pyversion >= 3.6:
         text = '''FAIL: You are using python %s. This pipeline was built with python 3.7+.
 FAIL: You will need at least python v3.6+.
-FAIL: exiting 00_start-pipeline.py
+FAIL: exiting 00_start-gatk_pipeline.py
     ''' % pyversion
         print(Bcolors.BOLD + Bcolors.FAIL + text + Bcolors.ENDC)
         exit()
@@ -302,8 +315,8 @@ def main():
     # read in the datatable
     data, f2pool, poolref = read_datatable(args.parentdir)
 
-    # create bedfiles to parallelize crisp later on
-    create_crisp_bedfiles(poolref)
+#     # create bedfiles to parallelize crisp later on
+#     create_bedfiles(poolref)
 
     # create directories for each group of pools to be combined
     pooldirs = make_pooldirs(data, args.parentdir)
