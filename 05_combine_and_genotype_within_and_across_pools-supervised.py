@@ -1,25 +1,11 @@
 ### usage
-# python 03a_combine_and_genotype_by_pool.py /path/to/parentdir-used-in-00_start-pipeline.py-command 
+# python 03a_combine_and_genotype_by_pool.py parentdir
 ### 
 
 ### imports
 import sys
-import os
-from os import path as op
-from os import listdir
-import pickle
 from collections import Counter
-def uni(mylist):
-    return list(set(mylist))
-def ls(DIR):
-    return sorted([f for f in listdir(DIR)])
-def fs (DIR):
-    return sorted([op.join(DIR,f) for f in ls(DIR)])
-def createdirs(dirs):
-    assert type(dirs) == list
-    for d in dirs:
-        if not op.exists(d):
-            os.makedirs(d)
+from coadaptree import *
 ### 
 
 ### args
@@ -29,29 +15,28 @@ if parentdir.endswith("/"):
 ###
 
 ### reqs
-samp2pool = pickle.load(open(op.join(parentdir,'samp2pool.pkl'),'rb'))
-poolref   = pickle.load(open(op.join(parentdir,'poolref.pkl'),'rb'))   #key=pool val=/path/to/ref.fa
-ploidy    = pickle.load(open(op.join(parentdir,'ploidy.pkl'),'rb'))    #not used yet, but maybe if pooled needs more time
+samp2pool = pklload(op.join(parentdir, 'samp2pool.pkl'))
+poolref   = pklload(op.join(parentdir, 'poolref.pkl'))  #key=pool val=/path/to/ref.fa
 pools = uni(list(samp2pool.values()))
 ###
 
 # get a list of subdirectory pool dirs created earlier in pipeline
 pooldirs = []
 for p in pools:
-    pooldir = op.join(parentdir,p)
+    pooldir = op.join(parentdir, p)
     if op.exists(pooldir):
         pooldirs.append(pooldir)
 
 # get a list of files and partition by those that need to be combined (multi-pool/indSeq genotyping)
 spp = {}
 for d in pooldirs:
-    vcfdir = op.join(d,'vcfs')
+    vcfdir = op.join(d, 'vcfs')
     # only get vcfs if they're ready for next step (those with .tbi files)
-    files = [f.replace(".gz.tbi",".gz") for f in fs(vcfdir) if f.endswith('.gz.tbi')] 
+    files = [f.replace(".gz.tbi", ".gz") for f in fs(vcfdir) if f.endswith('.gz.tbi')] 
     count = 0
     for f in files:
         count += 1
-        splits = op.basename(f).replace("raw_","").split("_")
+        splits = op.basename(f).replace("raw_", "").split("_")
         sp = splits[0]
         if not sp in spp:
             spp[sp] = {}
@@ -64,17 +49,17 @@ for d in pooldirs:
 #             if not kind2 in spp[sp]:
 #                 spp[sp][kind2] = []
 #             spp[sp][kind2].append(f)
-#         else:
-#             kind = 'unpooled'
-#             if not kind in spp[sp]: 
-#                 spp[sp][kind]  = []
-#             spp[sp][kind].append(f) 
+        else:
+            kind = 'unpooled'
+            if not kind in spp[sp]: 
+                spp[sp][kind]  = []
+            spp[sp][kind].append(f) 
 for kind in spp['DF']:
     print(kind,len(spp['DF'][kind]))
 
 # create some dirs
-outdir = op.join(parentdir,'snps')
-shdir  = op.join(parentdir,'shfiles/select_variants_within_and_across')
+outdir = op.join(parentdir, 'snps')
+shdir  = op.join(parentdir, 'shfiles/select_variants_within_and_across')
 createdirs([outdir,shdir])
 
 # get a list of snpfiles that have already been made
@@ -85,7 +70,7 @@ print(snpfiles[0])
 
 # make sh files
 alreadycreated = [f for f in fs(shdir) if f.endswith('.sh') and 'swp' not in f]
-print('len(alreadycreated)=',len(alreadycreated))
+print('len(alreadycreated)=', len(alreadycreated))
 shfiles = []
 newfiles = Counter()
 for sp in spp:
@@ -111,16 +96,16 @@ for sp in spp:
         for scaff in groups:
 #             print('len(groups[%s])= '%scaff,len(groups[scaff]))
             cmds = '''''' # I think this might need to be moved about the for loop? it might be working bc ...?
-            combfile = op.join(outdir,'%s--%s_combined.vcf.gz' % (pools,scaff))
-            gfile    = combfile.replace("_combined.vcf.gz","_genotyped.vcf.gz")
-            snpfile  = gfile.replace("_genotyped.vcf.gz","_snps.vcf.gz")
+            combfile = op.join(outdir, '%s--%s_combined.vcf.gz' % (pools, scaff))
+            gfile = combfile.replace("_combined.vcf.gz","_genotyped.vcf.gz")
+            snpfile = gfile.replace("_genotyped.vcf.gz","_snps.vcf.gz")
             if snpfile in snpfiles:
                 continue
 #             if (len(groups[scaff]) == 20 and kind == 'unpooled') or (len(groups[scaff]) == 2 and kind == 'pooled'):
             if len(groups[scaff]) == 2 and kind == 'pooled':
                 # these files need to be combined
                 varcmd = '--variant ' + ' --variant '.join([x for x in sorted(groups[scaff])])
-                cmds   = '''echo COMBINING GVCFs
+                cmds = '''echo COMBINING GVCFs
 gatk CombineGVCFs -R %(ref)s %(varcmd)s -O %(combfile)s 
 
 echo GENOTYPING GVCFs
@@ -144,9 +129,9 @@ gatk SelectVariants -R %(ref)s -V %(gfile)s --select-type-to-include SNP --restr
 
 ''' % locals()
             else:
-                print('\t',sp,kind,scaff,'doesnt have enough files')
+                print('\t', sp, kind, scaff, 'doesnt have enough files')
                 continue
-            file = op.join(shdir,'genotype---%(pools)s--%(scaff)s.sh' % locals())
+            file = op.join(shdir, 'genotype---%(pools)s--%(scaff)s.sh' % locals())
             if not file in alreadycreated: # this way I can start running the genotyping stage before all files are ready
                 newfiles[kind] += 1
                 if kind == 'unpooled':
@@ -178,7 +163,7 @@ python genotyping_rescheduler.py %(parentdir)s
 python genotyping_scheduler.py %(parentdir)s
 
 # genotype current file
-module load gatk/4.0.8.1
+module load gatk/4.1.0.0
 %(cmds)s
 
 # keep running jobs until time runs out
@@ -192,27 +177,26 @@ python genotyping_helper.py %(parentdir)s %(snpfile)s
 
 ''' % locals()
                 # do not want files created edited by genotyping_rescheduler to change time/mem back to default
-                with open(file,'w') as o:
+                with open(file, 'w') as o:
                     o.write("%s" % text)
                 shfiles.append(file)
 
 # create scheddir queue
-scheddir = op.join(parentdir,'shfiles/supervised/select_variants_within_and_across')
+scheddir = op.join(parentdir, 'shfiles/supervised/select_variants_within_and_across')
 if not op.exists(scheddir):
     os.makedirs(scheddir)
     
 for kind in newfiles:
-    print(kind,' created ',newfiles[kind],' files')
+    print(kind,' created ', newfiles[kind],' files')
     
 for sh in shfiles:
-    dst = op.join(scheddir,op.basename(sh))
+    dst = op.join(scheddir, op.basename(sh))
     try:
-        os.symlink(sh,dst)
+        os.symlink(sh, dst)
     except:
         print('could not create symlink')
         
 # # submit to scheduler, balance accounts
-# pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n","")
-# os.system('python %s %s' % (op.join(pipedir,'genotyping_scheduler.py'),parentdir)) 
+# os.system('python $HOME/gatk_pipeline/genotyping_scheduler.py %s' parentdir)
 
 print(shdir, len( ls(shdir) ) )
