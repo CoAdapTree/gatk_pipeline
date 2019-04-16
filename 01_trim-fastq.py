@@ -80,7 +80,7 @@ for samp, pairs in seq_pairs.items():
 %(email_text)s
 
 source $HOME/.bashrc
-export PYTHONPATH="${PYTHONPATH}:$HOME/pipeline"
+export PYTHONPATH="${PYTHONPATH}:$HOME/gatk_pipeline"
 export SQUEUE_FORMAT="%%.8i %%.8u %%.12a %%.68j %%.3t %%16S %%.10L %%.5D %%.4C %%.6b %%.7m %%N (%%r)"
 
 module load fastp/0.19.5
@@ -106,7 +106,7 @@ module load fastp/0.19.5
         newtext = newtext + text
         
     suffix = '''# once finished, map using bwa mem 
-python $HOME/pipeline/02_bwa-map_view_sort_index_flagstat.py %(parentdir)s %(samp)s
+python $HOME/gatk_pipeline/02_bwa-map_view_sort_index_flagstat.py %(parentdir)s %(samp)s
 
 ''' % locals()
     
