@@ -33,7 +33,7 @@
 ## Using the pipeline
 - First create a python3 environment (see above).
     - then use the `requirements.txt` file in the repo to install the appropriate python dependencies.
-        - `pip install -r $HOME/pipeline/requirements.txt`
+        - `pip install -r $HOME/gatk_pipeline/requirements.txt`
 - See example datatable.txt file needed for `00_start-pipeline.py`.
     - file names in `file_name_r1` and `file_name_r2` should be basenames not full paths
     - the entries in the `ref` column should be full paths
@@ -43,7 +43,7 @@
 
 - To kick off the pipeline, source your bashrc (`source ~/.bashrc`) to activate the python env, `cd $HOME/gatk_pipeline`, and run `00_start-pipeline.py` from the home node, and it will run the rest of the preprocessing pipeline automatically by serially sbatching jobs (through `06_lofreq.py`).
 
-`(py3) [user@host pipeline]$ python 00_start-pipeline.py -p PARENTDIR [-e EMAIL [-n EMAIL_OPTIONS]] [-h]`
+`(py3) [user@host gatk_pipeline]$ python 00_start-pipeline.py -p PARENTDIR [-e EMAIL [-n EMAIL_OPTIONS]] [-h]`
 ```
 optional arguments:
   -e EMAIL              the email address you would like to have notifications
