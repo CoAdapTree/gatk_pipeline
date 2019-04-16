@@ -4,14 +4,11 @@
 ###
 
 ### usage
-# 02_bwa-map_rginfo_mark_realign_lofreq_crisp.py /path/to/ref.fa /path/to/trimmedR1.fastq /path/to/trimmedR2.fastq \
-#                                                                                              /sbatch/dir/ sampID
+# 02_bwa-map_view_sort_index_flagstat.py parentdir samp
 ###
 
 ### assumes
 # outfiles from "bwa index ref.fasta"
-#
-# export path to lofreq in $HOME/.bashrc
 ###
 """
 
@@ -105,9 +102,9 @@ text = f'''#!/bin/bash
 
 # mark and build
 source $HOME/.bashrc
-export PYTHONPATH="${{PYTHONPATH}}:$HOME/pipeline"
+export PYTHONPATH="${{PYTHONPATH}}:$HOME/gatk_pipeline"
 export SQUEUE_FORMAT="%.8i %.8u %.12a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
-python $HOME/pipeline/03_mark_build.py {pooldir} {samp}
+python $HOME/gatk_pipeline/03_mark_build.py {pooldir} {samp}
 '''
 
 # create shfile
