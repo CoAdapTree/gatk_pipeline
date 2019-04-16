@@ -3,32 +3,26 @@
 ###
 
 ### imports
-import os
 import sys
-from os import path as op
-from os import listdir
 import time
 import random
-def ls(DIR):
-    return sorted([f for f in listdir(DIR)])
-def fs (DIR):
-    return sorted([op.join(DIR,f) for f in ls(DIR)])
+from coadaptree import *
 ###
 
 ### args
-thisfile, fqdir = sys.argv
+thisfile, pooldir = sys.argv
 ###
 
 ### reqs
-if fqdir.endswith("/"): #sometimes I run the scheduler from the command line, which appends / which screws up op.dirname()
-    fqdir = fqdir[:-1]
-DIR       = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
-print("DIR=",DIR)
-assert op.exists(DIR)
-scheduler = op.join(DIR,'scheduler.txt')
-os.chdir(DIR)
-qthresh   = 700
-user = os.popen("echo $USER").read().replace("\n","")
+if pooldir.endswith("/"): #sometimes I run the scheduler from the command line, which appends / which screws up op.dirname()
+    pooldir = pooldir[:-1]
+scheddir = op.join(op.dirname(pooldir), 'shfiles/gvcf_shfiles')
+print("scheddir=", scheddir)
+
+scheduler = op.join(scheddir, 'scheduler.txt')
+os.chdir(scheddir)
+qthresh = 700
+user = os.environ['USER']
 ###
 
 ### defs
@@ -47,25 +41,31 @@ def checksq(rt):
             assert int(s.split()[0]) == float(s.split()[0])
             count += 1
         except:
-            os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
+            os.system('echo "could not assert int == float, %s %s"' % (s[0], s[0]))
             exitneeded = True
     if count == 0 and len(rt) > 0:
         os.system('echo never asserted pid, exiting rescheduler.py')
         exitneeded = True
-    if exitneeded == True:
+    if exitneeded is True:
         delsched(globals()['scheduler'])
         exit()
+
+
 def sq(command):
     # how many jobs are running
     q = [x for x in os.popen(str(command)).read().split("\n") if not x == '']
     checksq(q)
     return len(q)
+
+
 def delsched(scheduler):
     # stop scheduler
     try:
         os.remove(scheduler)
     except OSError as e:
         pass
+
+
 def getpids():
     pids = os.popen('squeue -u lindb -o "%i"').read().split("\n")
     pids = [p for p in pids if not p == '']
@@ -74,18 +74,22 @@ def getpids():
         delsched(scheduler)
         exit()
     return pids[1:]
+
+
 def startscheduler(scheduler):
-    with open(scheduler,'w') as o:
+    with open(scheduler, 'w') as o:
         # after creating the file, write job id in case i want to cancel process
-        jobid = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
+        jobid = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n", "")
         o.write("scheduler id = %s" % jobid)
     # double check that the scheduler is correct
-    with open(scheduler,'r') as o:
+    with open(scheduler, 'r') as o:
         text = o.read()
     if not text.split()[-1] == '=':
         if not text.split()[-1] == jobid:
             os.system('echo another scheduler is in conflict. Allowing other scheduler to proceed. Exiting')
             exit()
+
+
 def sbatchjobs(files):
     for f in files:
         realp = op.realpath(f) # find the file to which the symlink file is linked
@@ -98,19 +102,20 @@ def sbatchjobs(files):
                 print('unable to unlink symlink %f' % f)
                 continue
             os.system('sbatch %s' % realp) # then sbatch the real sh file if & only if the symlink was successfully unlinked    
-            
-def main(DIR):
+
+
+def main(scheddir):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
     x = sq("squeue -u %(user)s | grep scatter " % globals()) # number of gvcf jobs in the queue
-    print ('queue length = ',x)
+    print ('queue length = ', x)
     if x < qthresh: # if there is room in the queue
         print('scheduler not running')
         print('queue length less than thresh')
         nsbatch = qthresh - x # how many should I submit?
-        print ('nsbatch =',nsbatch)
-        print (len(fs(DIR)))
-        files = [f for f in fs(DIR) if 'scheduler.txt' not in f and '.out' not in f and 'workingdir' not in f][0:nsbatch]
+        print ('nsbatch =', nsbatch)
+        print (len(fs(scheddir)))
+        files = [f for f in fs(scheddir) if 'scheduler.txt' not in f and '.out' not in f and 'workingdir' not in f][0:nsbatch]
         if len(files) > 0:
             print('submitting %s jobs' % str(len(files)))
             print(files)
@@ -119,20 +124,22 @@ def main(DIR):
             print('no files to sbatch')
     else:
         print('scheduler was not running, but no room in queue' )
-    pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n","")
-    os.system('python %s scatter' % (op.join(pipedir,'balance_queue.py')))
+    pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n", "")
+    os.system('python %s scatter' % (op.join(pipedir, 'balance_queue.py')))
     delsched(scheduler)
-def bigbrother(scheduler,DIR):
+
+
+def bigbrother(scheduler, scheddir):
     # if the scheduler controller has died, remove the scheduler
-    with open(scheduler,'r') as o:
-        text = o.read().replace("\n","")
+    with open(scheduler, 'r') as o:
+        text = o.read().replace("\n", "")
     pid = text.split()[-1]
     if not pid == '=':
         pids = getpids()
         if not pid in pids:
             print('controller was not running, so the scheduler was destroyed')
             delsched(scheduler)
-            main(DIR)
+            main(scheddir)
         else:
             print('controller is running, allowing it to proceed')
 ###
@@ -140,8 +147,8 @@ def bigbrother(scheduler,DIR):
 # main
 time.sleep(random.random())  # just in case the very first instances of scheduler.py start at v similar times
 if not op.exists(scheduler): # if scheduler isn't running
-    main(DIR)
+    main(scheddir)
 else:
     print('scheduler was running')
-    bigbrother(scheduler,DIR)
-    
+    bigbrother(scheduler, scheddir)
+

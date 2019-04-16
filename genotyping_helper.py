@@ -4,25 +4,18 @@
 ###
 
 ###
-# usage: genotyping_helper.py /path/to/parentdir-used-in-00_start-pipeline.py/
+# usage: genotyping_helper.py parentdir
 
 ###
 # purpose: to keep running gatk GenotypeGVCF commands until time or memory runs out
 ###
 
 ### imports
-import os
 import sys
-import pickle
 import shutil
 import signal
-from os import listdir
-from os import path as op
 from random import shuffle
-def ls(DIR):
-    return sorted([f for f in listdir(DIR)])
-def fs (DIR):
-    return sorted([op.join(DIR,f) for f in ls(DIR)])
+from coadaptree import *
 ###
 
 ### args
@@ -32,8 +25,7 @@ if parentdir.endswith("/"):
 ###
 
 # balance the queue
-pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n","")
-os.system('python %s genotyp' % op.join(pipedir,'balance_queue.py'))
+os.system('python $HOME/gatk_pipeline/balance_queue.py genotyp')
 
 # make sure the previous outfile was created
 def checkoutfile(outfile):
@@ -44,14 +36,14 @@ checkoutfile(outfile)
 
 
 # os.system('source $HOME/.bashrc')
-scheddir = op.join(parentdir,'shfiles/supervised/select_variants_within_and_across')
+scheddir = op.join(parentdir, 'shfiles/supervised/select_variants_within_and_across')
 os.chdir(scheddir)
-workingdir = op.join(scheddir,'workingdir')
+workingdir = op.join(scheddir, 'workingdir')
 if not op.exists(workingdir):
     os.makedirs(workingdir)
     
 # get job info and current memory/time limits
-jobid    = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
+jobid = os.environ['SLURM_JOB_ID']
 if not float(jobid) == int(jobid):
     # if I can't retrieve the jobid, just let the job die
     # ensures that there wasn't an error to the slurm request (some times I get timeouts etc as returns)
@@ -94,31 +86,31 @@ if len(shfiles) > 0:
             # no need to have the job keep looking for other jobs if most other jobs have different reqs (mem, time)
             os.system('echo exceeded badcount, exiting')
             exit()
-        reservation = op.join(workingdir,op.basename(s))
+        reservation = op.join(workingdir, op.basename(s))
         if op.exists(s):
             try:
-                shutil.move(s,reservation) # so that other jobs don't rewrite
+                shutil.move(s, reservation) # so that other jobs don't rewrite
             except:
                 os.system('echo could not move shfile %s' % s)
                 os.system('echo to reservation %s' % reservation)
                 continue
             os.system('echo %s' % reservation)
             
-            with open(reservation,'r') as O:
+            with open(reservation, 'r') as O:
                 o = O.readlines()
 
             # only continue to run jobs that fit in the same memory allocation (dont waste resources if its going to fail)
-            mem = int([x for x in o if 'mem' in x][0].split("=")[1].replace("M\n",""))
+            mem = int([x for x in o if 'mem' in x][0].split("=")[1].replace("M\n", ""))
             if not mem == jobmem: # don't waste resources on jobs requiring less mem either
                 os.system('echo file does not match mem limit')
-                shutil.move(reservation,s) # put the job back in the queue
+                shutil.move(reservation, s) # put the job back in the queue
                 badcount += 1
                 continue
             # only continue to run jobs that might fit in same time allocation
             TIME = int([x for x in o if 'time' in x][0].split("=")[1].split(':')[0])
             if TIME > jobtime:
                 os.system('echo file exceeds necessary time')
-                shutil.move(reservation,s)
+                shutil.move(reservation, s)
                 badcount += 1
                 continue
 
@@ -129,7 +121,7 @@ if len(shfiles) > 0:
                 if line.startswith('gatk'):
                     gatkcmds.append(line)
             for cmd in gatkcmds:
-                cmd = cmd.replace('\n','')
+                cmd = cmd.replace('\n', '')
                 os.system('echo running cmd:')
                 os.system('echo %s' % cmd)
                 os.system('%s' % cmd)
@@ -143,11 +135,8 @@ if len(shfiles) > 0:
                 os.system('echo unable to unlink %s' % reservation)
                 pass
             
-            pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n","")
-            os.system('python %s %s' % (op.join(pipedir,'genotyping_rescheduler.py'),
-                                        parentdir))
-            os.system('python %s %s' % (op.join(pipedir,'genotyping_scheduler.py'),
-                                        parentdir))
+            os.system('python $HOME/gatk_pipeline/genotyping_rescheduler.py %s' % parentdir)
+            os.system('python $HOME/gatk_pipeline/genotyping_scheduler.py %s' % parentdir)
 else:
     os.system('echo no files to help')
     
