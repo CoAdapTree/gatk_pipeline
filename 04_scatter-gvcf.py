@@ -29,7 +29,7 @@ vcfdir = op.join(pooldir, 'vcfs')
 scheddir = op.join(parentdir, 'shfiles/gvcf_shfiles')
 for d in [shdir, gvcfdir, vcfdir, scheddir]:
     makedir(d)
-    
+
 # create filenames
 dupdir = op.dirname(dupfile)
 rawvcf = op.join(vcfdir, 'raw_%s.g.vcf.gz' % samp)
@@ -49,7 +49,6 @@ scafdir = op.join(op.dirname(ref), 'intervals')
     
 scaffiles = [f for f in fs(scafdir) if f.endswith('.list')]
 os.system('echo found %s intervalfiles' % str(len(scaffiles)))
-email_text = get_email_info(parentdir, '04')
 for scaff in scaffiles:
     s = "scatter-%s" % scaff.split(".list")[0].split("batch_")[1]
     filE = op.join(gvcfdir, f'{pool}-{samp}-{s}.sh')
@@ -61,13 +60,14 @@ for scaff in scaffiles:
 #SBATCH --mem-per-cpu=8000M
 #SBATCH --job-name={pool}-{samp}-{s}
 #SBATCH --output={pool}-{samp}-{s}_%j.out 
-{email_text}
 
 # for debugging 
 cat $0 
 echo {filE}
 
 source $HOME/.bashrc
+export PYTHONPATH="${{PYTHONPATH}}:$HOME/gatk_pipeline"
+export SQUEUE_FORMAT="%.8i %.8u %.12a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
 
 # resubmit jobs with errors
 python $HOME/gatk_pipeline/rescheduler.py {pooldir}
