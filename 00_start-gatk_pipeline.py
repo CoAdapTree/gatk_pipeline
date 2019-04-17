@@ -219,7 +219,7 @@ later in gatk_pipeline\n\texiting 00_start-gatk_pipeline.py' % var)
             if exe == 'activate':
                 print('\t\t(the lack of activate means that the python env is not correctly installed)')
             exit()
-    # make sure pipeline can be accessed via $HOME/pipeline
+    # make sure pipeline can be accessed via $HOME/gatk_pipeline
     if not op.exists(op.join(os.environ['HOME'], 'gatk_pipeline')):
         print('\tcould not find gatk_pipeline via $HOME/gatk_pipeline')
         exit()
@@ -315,7 +315,7 @@ def main():
     # read in the datatable
     data, f2pool, poolref = read_datatable(args.parentdir)
 
-#     # create bedfiles to parallelize crisp later on
+#     # create bedfiles to parallelize later on
 #     create_bedfiles(poolref)
 
     # create directories for each group of pools to be combined
