@@ -25,14 +25,14 @@ thisfile, pooldir, tbi = sys.argv
 # kill the job if the previous command ran out of mem
 def checktbi(tbi):
     if not op.exists(tbi):
-        os.system('echo previous tbi did not finish: %s' % tbi) 
+        os.system('echo previous tbi did not finish: %s' % tbi)
         os.kill(os.getppid(), signal.SIGHUP) # kill the job as if triggered by out-of-memory handler (oom-kill event)
 checktbi(tbi)
 
 
 os.system('source $HOME/.bashrc')
 DIR = op.join(op.dirname(pooldir),'shfiles/gvcf_shfiles')
-print('DIR = ', DIR)
+os.system('echo DIR = %s' % DIR)
 os.chdir(DIR)
 workingdir = op.join(DIR,'workingdir')
 if not op.exists(workingdir):
@@ -40,12 +40,8 @@ if not op.exists(workingdir):
     
 # get job info and current memory/time limits
 jobid = os.environ['SLURM_JOB_ID']
-if not float(jobid) == int(jobid):
-    # if I can't retrieve the jobid, just let the job die
-    # ensures that there wasn't an error to the slurm request (some times I get timeouts etc as returns)
-    exit()
 os.system('echo jobid = %s' % jobid)
-f = [f for f in fs(DIR) if str(jobid) in f][0]
+f = [f for f in fs(DIR) if str(jobid) in f and '.swp' not in f][0]
 with open(f,'r') as o:
     text = o.read().split("\n")
 for line in text:
@@ -71,7 +67,6 @@ os.system('echo running gvcf_helper.py')
 badcount = 0
 if len(shfiles) > 0:
     for s in shfiles:
-    #     print (s)
         if badcount > 25:
             # no need to have the job keep looking for other jobs if most other jobs have different reqs (mem, time)
             os.system('echo exceeded badcount, exiting')
