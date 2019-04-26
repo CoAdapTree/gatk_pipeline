@@ -53,7 +53,7 @@ optional arguments:
                         receive from the pipeline. Requires --email-address.
                         These options are used to fill out the #SBATCH flags.
                         must be one (or multiple) of ['all', 'none', 'fail',
-                        'begin', 'end', 'pipeline-finish']
+                        'begin', 'end']
   -h, --help            Show this help message and exit.
 
 required arguments:
