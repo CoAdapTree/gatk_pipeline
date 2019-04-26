@@ -41,9 +41,9 @@
 	- RG info, file paths, etc should of course be different between sequenced files of single samps
 - Once the environment is set up, put `datatable.txt` and the fastq files (symlinks work too) into a folder. This is the folder I call `PARENTDIR`.
 
-- To kick off the pipeline, source your bashrc (`source ~/.bashrc`) to activate the python env, `cd $HOME/gatk_pipeline`, and run `00_start-gatk_pipeline.py` from the home node, and it will run the rest of the preprocessing pipeline automatically by serially sbatching jobs (through `06_lofreq.py`).
+- To kick off the pipeline, source your bashrc (`source ~/.bashrc`) to activate the python env, export the path to the pipeline `export PYTHONPATH="${PYTHONPATH}:$HOME/gatk_pipeline`, and run `00_start-gatk_pipeline.py` from the home node, and it will run the rest of the preprocessing pipeline automatically by serially sbatching jobs (through `04_scatter-gvcf.py`).
 
-`(py3) [user@host gatk_pipeline]$ python 00_start-gatk_pipeline.py -p PARENTDIR [-e EMAIL [-n EMAIL_OPTIONS]] [-h]`
+`(py3) [user@host ~]$ python $HOME/gatk_pipeline/00_start-gatk_pipeline.py -p PARENTDIR [-e EMAIL [-n EMAIL_OPTIONS]] [-h]`
 ```
 optional arguments:
   -e EMAIL              the email address you would like to have notifications
