@@ -21,7 +21,7 @@ print("scheddir=", scheddir)
 
 scheduler = op.join(scheddir, 'scheduler.txt')
 os.chdir(scheddir)
-qthresh = 700
+qthresh = 3
 user = os.environ['USER']
 ###
 

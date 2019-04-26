@@ -49,20 +49,28 @@ def getsq_exit(balancing):
         return []
 
 
-def getsq(grepping, states=[], balancing=False):
+def getsq(grepping=None, states=[], balancing=False):
+    if grepping is None:
+        grepping = [os.environ['USER']]
     if isinstance(grepping, str):
         # in case I pass a single str instead of a list of strings
         grepping = [grepping]
 
     # get the queue, without a header
-    sqout = subprocess.check_output([shutil.which('squeue'),
-                                     '-u',
-                                     os.environ['USER'],
-                                     '-h']).decode('utf-8').split('\n')
+    cmd = [shutil.which('squeue'),
+           '-u',
+           os.environ['USER'],
+           '-h']
+    if 'running' in states:
+        cmd.extend(['-t', 'RUNNING'])
+    elif 'pending' in states:
+        cmd.extend(['-t', 'PD'])
+    sqout = subprocess.check_output(cmd).decode('utf-8').split('\n')
+
     sq = [s for s in sqout if not s == '']
     checksq(sq)  # make sure slurm gave me something useful
 
-    # look for the things I want to grep (all of this to avoid os.system() ... ugh codacy)
+    # look for the things I want to grep
     grepped = []
     if len(sq) > 0:
         for q in sq:  # for each job in queue
@@ -75,21 +83,12 @@ def getsq(grepping, states=[], balancing=False):
                             if grep.lower() in split.lower():
                                 keepit += 1
                                 break
-                keepit2 = False
-                if len(states) > 0:
-                    for state in states:
-                        if state.lower() == splits[4].lower():
-                            keepit2 = True
-                if (keepit == len(grepping) and len(grepping) != 0) or keepit2 is True:
+                if (keepit == len(grepping) and len(grepping) != 0):
                     grepped.append(tuple(splits))
 
         if len(grepped) > 0:
             return grepped
     return getsq_exit(balancing)
-#         else:  # I'm pretry sure I can just have one getsq_exit() statement at the end of the function
-#             getsq_exit(balancing)
-#     else:
-#         getsq_exit(balancing)
 
 
 def adjustjob(acct, jobid):

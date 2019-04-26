@@ -3,7 +3,7 @@
 ###
 
 ###
-# usage rescheduler.py /path/to/fq.gzfiles/folder/
+# usage rescheduler.py pooldir
 ###
 
 ### imports
@@ -11,6 +11,7 @@ import sys
 import shutil
 from random import shuffle
 from coadaptree import *
+from balance_queue import getsq
 ###
 
 ### args
@@ -20,7 +21,7 @@ thisfile, pooldir = sys.argv
 if pooldir.endswith("/"):
     pooldir = pooldir[:-1]
 parentdir = op.dirname(pooldir)
-os.system('echo parentdir= %s' % parentdir)
+os.system('echo parentdir = %s' % parentdir)
 #print dirname
 scheddir = op.join(parentdir, 'shfiles/gvcf_shfiles') 
 #print scheddir
@@ -31,7 +32,9 @@ samp2pool = pklload(op.join(parentdir, 'samp2pool.pkl'))
 
 
 def vcf2sh(v):
+    print('v =', v)
     pooldir = op.dirname(op.dirname(v))
+    pool = op.basename(pooldir)
     gvcfdir = op.join(pooldir, 'shfiles/04_gvcf_shfiles')
     bname = op.basename(v)
     shname = bname.replace("raw_", "").replace(".g.vcf.gz", ".sh")
@@ -69,33 +72,6 @@ def delrescheduler(rescheduler,createdrescheduler):
             pass
 
 
-def checksq(rt):
-    exitneeded = False
-    if not type(rt) == list:
-        os.system('echo "type(sq) != list, exiting rescheduler.py"')
-        exitneeded = True
-#     if len(rt) == 0:
-#         os.system('echo "len(sq) == 0, exiting rescheduler.py"')
-#         exitneeded = True
-    count = 0
-    for s in rt:
-        if 'socket' in s.lower():
-            os.system('echo "socket in sq return, exiting rescheduler.py"')
-            exitneeded = True
-        try:
-            assert int(s.split()[0]) == float(s.split()[0])
-            count += 1
-        except:
-            os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
-            exitneeded = True
-    if count == 0 and len(rt) > 0:
-        os.system('echo never asserted pid, exiting rescheduler.py')
-        exitneeded = True
-    if exitneeded is True:
-        delrescheduler(rescheduler,globals()['createdrescheduler'])
-        exit()
-
-
 def removeworker(scheddir,trushfile):
     # remove worker from workingdir
     workingdir = op.join(scheddir, 'workingdir')
@@ -108,27 +84,27 @@ def removeworker(scheddir,trushfile):
             os.system('echo could not unlink worker: %s' % worker)
 
 
-def getsq():
-    return [x for x in os.popen("squeue -u lindb | grep 'R 2'").read().split("\n") if not x == '']
-
-
 def getpids(sq):
     pids = []
-    for s in sq:
-        if not s == '':
-            pid = s.split()[0]
-            pids.append(pid)
+    if len(sq) > 0:
+        print('getpids len(sq) > 0')
+        pids = []
+        for q in sq:
+            if not q == '':
+                pid = q[0]
+                pids.append(pid)
     return pids
 
 
 def bigbrother(rescheduler):
+    print('reschduler = ', rescheduler)
     # if the scheduler controller has died, remove the scheduler
     with open(rescheduler, 'r') as o:
         text = o.read().replace("\n", "")
+        os.system('echo %s' % text)
     pid = text.split()[-1]
     if not pid == '=':
-        sq = getsq()
-        checksq(sq)
+        sq = getsq(states=['running'])
         pids = getpids(sq)
         if not pid in pids:
             os.system('echo controller was not running, so the scheduler was destroyed')
@@ -139,12 +115,9 @@ def bigbrother(rescheduler):
 
 # identify outs that aren't running
 createdrescheduler = False
-sq = getsq()
-    # check sq return with if statements:
-    # hopefully will solve problem when I get: "slurm_load_jobs error: Socket timed out on send/recv operation"
-    # not sure if the bash error is being returned to sq; it doesn't happen to often, bash error is in outfile
-checksq(sq)
-#print(sq)
+sq = getsq(states=['running'])
+print('len(sq) = ', len(sq))
+print(sq)
 pids = getpids(sq)
 #print(pids)
 runs = []
@@ -158,8 +131,8 @@ os.system('echo running rescheduler.py')
 if len(outs) > 0:
     if not op.exists(rescheduler):
         # reserve the rescheduler
-        with open(rescheduler,'w') as o:
-            jobid = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n", "")
+        with open(rescheduler, 'w') as o:
+            jobid = os.environ['SLURM_JOB_ID']
             o.write("rescheduler id = %s" % jobid)
         createdrescheduler = True
         # double check that the rescheduler is correct
@@ -174,8 +147,7 @@ if len(outs) > 0:
         # look for errors in outfiles and resubmit the error-causing shfile using more mem or time
         for out in outs:
             #check again to see if job is running
-            sq = getsq()
-            checksq(sq)
+            sq = getsq(states=['running'])
             pids = getpids(sq)
             pid = op.basename(out).split(".out")[0].split("_")[1]
             if pid in pids:

@@ -8,15 +8,8 @@
 
 ### imports
 import sys
-import os
-from os import path as op
-from os import listdir
+from coadaptree import *
 import shutil
-import pickle
-def ls(DIR):
-    return sorted([f for f in listdir(DIR)])
-def fs (DIR):
-    return sorted([op.join(DIR,f) for f in ls(DIR)])
 ###
 
 ### args
@@ -32,7 +25,9 @@ DIR = op.join(parentdir,'shfiles/supervised/select_variants_within_and_across')
 os.chdir(DIR)
 outs = [f for f in fs(DIR) if f.endswith('out') and 'checked' not in f and 'swp' not in f]
 rescheduler = op.join(DIR,'rescheduler.txt')
-samp2pool = pickle.load(open(op.join(parentdir,'samp2pool.pkl'),'rb'))
+samp2pool = pklload(op.join(parentdir,'samp2pool.pkl'))
+
+
 def vcf2sh(v):
     pooldir  = op.dirname(op.dirname(v))
     gvcfdir  = op.join(pooldir,'shfiles/gvcf_shfiles')
@@ -41,6 +36,8 @@ def vcf2sh(v):
     shname   = bname.replace("raw_","").replace(".g.vcf.gz",".sh")
     shfile   = op.join(gvcfdir,shname)
     return shfile
+
+
 def unlink(linkname):
     try:
         os.unlink(linkname)
@@ -48,6 +45,8 @@ def unlink(linkname):
     except:
         print('no symlink to unlink: %s' % linkname)
         pass
+
+
 def addlink(args):
     trushfile,linkname = args
     print('symlink from: %s' % linkname)
@@ -56,7 +55,9 @@ def addlink(args):
         os.symlink(trushfile,linkname)
         print('added symlink to queue: %s' % linkname)
     else:
-        print('unable to create symlink from %s to %s' % (linkname,trushfile)) 
+        print('unable to create symlink from %s to %s' % (linkname,trushfile))
+
+
 def delrescheduler(rescheduler,createdrescheduler):
     if createdrescheduler == True:
         try:
@@ -65,6 +66,8 @@ def delrescheduler(rescheduler,createdrescheduler):
         except:
             os.system('echo could not remove rescheduler')
             pass
+
+
 def getallpids():
     pids = os.popen('squeue -u lindb -o "%i"').read().split("\n")
     pids = [p for p in pids if not p == '']
@@ -73,6 +76,8 @@ def getallpids():
         delrescheduler(rescheduler,globals()['createdrescheduler'])
         exit()
     return pids[1:]
+
+
 def checksq(rt):
     exitneeded = False
     if not type(rt) == list:
@@ -98,8 +103,12 @@ def checksq(rt):
     if exitneeded == True:
         delrescheduler(rescheduler,globals()['createdrescheduler'])
         exit()
+
+
 def getsq():
     return [x for x in os.popen("squeue -u lindb | grep 'R 2'").read().split("\n") if not x == '']
+
+
 def removeworker(DIR,trushfile):
     # remove worker from workingdir
     workingdir = op.join(DIR,'workingdir')
@@ -110,6 +119,8 @@ def removeworker(DIR,trushfile):
             os.unlink(worker)
         except:
             os.system('echo could not unlink worker: %s' % worker)
+
+
 def getpids(sq):
     pids = []
     for s in sq:
@@ -117,6 +128,8 @@ def getpids(sq):
             pid = s.split()[0]
             pids.append(pid)
     return pids
+
+
 def bigbrother(rescheduler):
     # if the scheduler controller has died, remove the scheduler
     with open(rescheduler,'r') as o:
@@ -129,6 +142,8 @@ def bigbrother(rescheduler):
             delrescheduler(rescheduler,True)
         else:
             print('controller is running, allowing it to proceed')
+
+
 def checktbis(shfile):
     # if some of the previous files were created, no need in wasting time recreating them
     with open(shfile,'r') as s:

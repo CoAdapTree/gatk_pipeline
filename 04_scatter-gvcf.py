@@ -32,7 +32,7 @@ for d in [shdir, gvcfdir, vcfdir, scheddir]:
 
 # create filenames
 dupdir = op.dirname(dupfile)
-rawvcf = op.join(vcfdir, 'raw_%s.g.vcf.gz' % samp)
+rawvcf = op.join(vcfdir, f'raw_{pool}-{samp}.g.vcf.gz')
 
 #get ploidy 
 ploidy = pklload(op.join(parentdir, 'ploidy.pkl'))[pool]
@@ -52,7 +52,7 @@ os.system('echo found %s intervalfiles' % str(len(scaffiles)))
 for scaff in scaffiles:
     s = "scatter-%s" % scaff.split(".list")[0].split("batch_")[1]
     filE = op.join(gvcfdir, f'{pool}-{samp}-{s}.sh')
-    vcf = rawvcf.replace(".g.vcf.gz", "_%s.g.vcf.gz" % s)
+    vcf = rawvcf.replace(".g.vcf.gz", "-%s.g.vcf.gz" % s)
     tbi = vcf.replace(".gz", ".gz.tbi")
     text = f'''#!/bin/bash
 #SBATCH --time=11:59:00
@@ -73,12 +73,11 @@ export SQUEUE_FORMAT="%.8i %.8u %.12a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m 
 python $HOME/gatk_pipeline/rescheduler.py {pooldir}
 
 # fill up the queue
-python scheduler.py {pooldir}
+python $HOME/gatk_pipeline/scheduler.py {pooldir}
 
 # call variants
 module load gatk/4.1.0.0
 gatk HaplotypeCaller --sample-ploidy {ploidy} -R {ref} --genotyping-mode DISCOVERY -ERC GVCF -I {dupfile} -O {vcf} -L {scaff} --minimum-mapping-quality 20
-module unload gatk
 
 # keep running jobs until time runs out
 echo 'getting help from gvcf_helper'

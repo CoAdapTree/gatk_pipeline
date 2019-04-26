@@ -59,19 +59,26 @@ RGID=$(zcat {r1out} | head -n1 | sed 's/:/_/g' | cut -d "_" -f1,2,3,4)
 RGPU=$RGID.{rglb}
 
 # map, sam to bam, sort by coordinate, index
+echo -e "\nmapping started"
 module load bwa/0.7.17
 bwa mem -t 32 -M -R "@RG\\tID:$RGID\\tSM:{rgsm}\\tPL:{rgpl}\\tLB:{rglb}\\tPU:$RGPU" \
 {ref} {r1out} {r2out} > {samfile}
 module unload bwa
 
 module load samtools/1.9
+# discard if query unmapped and keep only proper pairs
+echo -e "\\nremoving unmapped, improper pairs"
 samtools view -@ 32 -q 20 -F 0x0004 -f 0x0002 -Sb {samfile} > {bamfile}
+echo -e "\\nstarting to sort"
 samtools sort -@ 32 {bamfile} > {sortfile}
+echo -e "\\ncreating index file"
 samtools index {sortfile}
+echo -e "\\nmaking flagstat"
 samtools flagstat {sortfile} > {flagfile}
 module unload samtools
 
 module load bedtools/2.27.1
+echo -e "\\ncreating coordfile"
 bedtools bamtobed -i {sortfile} > {coordfile}
 
 ''')
@@ -90,7 +97,7 @@ pkldump(sortfiles, op.join(pooldir, '%s_sortfiles.pkl' % samp))
 email_text = get_email_info(parentdir, '02')
 text = f'''#!/bin/bash
 #SBATCH --time=23:59:00
-#SBATCH --mem=35000M
+#SBATCH --mem=55000M
 #SBATCH --nodes=1
 #SBATCH --ntasks=32
 #SBATCH --cpus-per-task=1

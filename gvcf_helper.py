@@ -1,3 +1,4 @@
+"""
 ### FIX
 # at some point, have the jobID/mem as an input arg instead of scripted
 ###
@@ -8,24 +9,16 @@
 ###
 # purpose: to keep running gatk commands until time or memory runs out
 ###
+"""
 
 ### imports
-import sys
-import os
-import signal
-from os import path as op
-from os import listdir
-import pickle
-import shutil
+import sys, signal, shutil
 from random import shuffle
-def ls(DIR):
-    return sorted([f for f in listdir(DIR)])
-def fs (DIR):
-    return sorted([op.join(DIR,f) for f in ls(DIR)])
+from coadaptree import *
 ###
 
 ### args
-thisfile, fqdir, tbi = sys.argv
+thisfile, pooldir, tbi = sys.argv
 ###
 
 
@@ -35,16 +28,18 @@ def checktbi(tbi):
         os.system('echo previous tbi did not finish: %s' % tbi) 
         os.kill(os.getppid(), signal.SIGHUP) # kill the job as if triggered by out-of-memory handler (oom-kill event)
 checktbi(tbi)
-        
+
+
 os.system('source $HOME/.bashrc')
-DIR = op.join(op.dirname(fqdir),'shfiles/gvcf_shfiles')
+DIR = op.join(op.dirname(pooldir),'shfiles/gvcf_shfiles')
+print('DIR = ', DIR)
 os.chdir(DIR)
 workingdir = op.join(DIR,'workingdir')
 if not op.exists(workingdir):
     os.makedirs(workingdir)
     
 # get job info and current memory/time limits
-jobid    = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
+jobid = os.environ['SLURM_JOB_ID']
 if not float(jobid) == int(jobid):
     # if I can't retrieve the jobid, just let the job die
     # ensures that there wasn't an error to the slurm request (some times I get timeouts etc as returns)
@@ -64,14 +59,8 @@ for line in text:
         else:
             # xhour job
             jobtime = int(line.split("=")[-1].split(':')[0] )    
-#jobinfo  = os.popen("sacct -j %s | grep 'lindb'" % jobid).read()
-#print('jobinfo = ',jobinfo)
-#jobmem   = int([x for x in jobinfo.split() if 'mem' in x][0].split(",")[1].split('=')[1].replace("M",""))
 os.system('echo jobmem = %s' % jobmem)
-#timeinfo = os.popen("sacct -j %s --format Timelimit" % jobid).read()
-#print('timeinfo = ',timeinfo)
-#jobtime  = int(timeinfo.split()[-1].split(':')[0])
-os.system('echo jobmem = %s' % jobmem)
+os.system('echo jobtime = %s' % jobtime)
 
 # get list of remaining gatk calls
 shfiles = [f for f in fs(DIR) if f.endswith('.sh')]
@@ -133,16 +122,9 @@ if len(shfiles) > 0:
                     tbi = vcf.replace(".gz",".gz.tbi")
                     checktbi(tbi) # in case I exceeded mem but did not trigger oom-kill by HPC
                     
-                    pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n","")
-                    os.system('python %s %s' % (op.join(pipedir,'rescheduler.py'),
-                                                fqdir))
-                    os.system('python %s %s' % (op.join(pipedir,'scheduler.py'),
-                                                fqdir))
+                    os.system('python $HOME/gatk_pipeline/rescheduler.py %s' % pooldir)
+                    os.system('python $HOME/gatk_pipeline/scheduler.py %s' % pooldir)
 
                     break
 else:
     os.system('echo no files to help')
-    
-    
-    
-    
