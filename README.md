@@ -31,7 +31,7 @@
 
 
 ## Using the pipeline
-- First create a python3 environment (see above).
+- First create a python3 environment then activate it (see above).
     - then use the `requirements.txt` file in the repo to install the appropriate python dependencies.
         - `pip install -r $HOME/gatk_pipeline/requirements.txt`
 - See example datatable.txt file needed for `00_start-pipeline.py`.
