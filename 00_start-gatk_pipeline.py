@@ -4,7 +4,7 @@
 ###
 """
 
-import os, sys, distutils.spawn, subprocess, shutil, argparse, create_bedfiles, pandas as pd
+import os, sys, distutils.spawn, subprocess, shutil, argparse, pandas as pd
 import balance_queue
 from os import path as op
 from collections import OrderedDict
@@ -92,13 +92,6 @@ def make_pooldirs(data, parentdir):
         pooldirs.append(makedir(DIR))
         makedir(op.join(DIR, 'shfiles'))
     return pooldirs
-
-
-# def create_bedfiles(poolref):
-#     # create bedfiles for crisp
-#     print(Bcolors.BOLD + "\ncreating bedfiles" + Bcolors.ENDC)
-#     for ref in uni(poolref.values()):
-#         create_bedfiles.main('create_bedfiles.py', ref)
 
 
 def read_datatable(parentdir):
