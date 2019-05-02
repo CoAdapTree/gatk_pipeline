@@ -95,7 +95,7 @@ def make_pooldirs(data, parentdir):
 
 
 def read_datatable(parentdir):
-    # read in the datatable, save rginfo for later
+    # read in the datatable, save info for later
     datatable = op.join(parentdir, 'datatable.txt')
     if not op.exists(datatable):
         print(Bcolors.FAIL + '''FAIL: the datatable is not in the necessary path: %s
@@ -323,7 +323,10 @@ def main():
     # create and sbatch sh files
     create_sh(pooldirs, poolref)
     
-    print(Bcolors.BOLD + "\nDone with 00_start-gatk_pipeline.py" + Bcolors.ENDC)
+    print(Bcolors.BOLD +
+          Bcolors.OKGREEN +
+          "\nDone with 00_start-gatk_pipeline.py" +
+          Bcolors.ENDC)
 
 
 if __name__ == '__main__':
