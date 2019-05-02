@@ -322,6 +322,8 @@ def main():
 
     # create and sbatch sh files
     create_sh(pooldirs, poolref)
+    
+    print(Bcolors.BOLD + "\nDone with 00_start-gatk_pipeline.py" + Bcolors.ENDC)
 
 
 if __name__ == '__main__':
