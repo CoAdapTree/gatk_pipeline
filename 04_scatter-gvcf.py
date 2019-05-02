@@ -35,7 +35,7 @@ dupdir = op.dirname(dupfile)
 rawvcf = op.join(vcfdir, f'raw_{pool}-{samp}.g.vcf.gz')
 
 #get ploidy 
-ploidy = pklload(op.join(parentdir, 'ploidy.pkl'))[pool]
+ploidy = pklload(op.join(parentdir, 'ploidy.pkl'))[samp]
 print ('ploidy =', ploidy)
 
 # create sh files
@@ -57,7 +57,7 @@ for scaff in scaffiles:
     text = f'''#!/bin/bash
 #SBATCH --time=11:59:00
 #SBATCH --ntasks=1
-#SBATCH --mem-per-cpu=8000M
+#SBATCH --mem-per-cpu=20000M
 #SBATCH --job-name={pool}-{samp}-{s}
 #SBATCH --output={pool}-{samp}-{s}_%j.out 
 

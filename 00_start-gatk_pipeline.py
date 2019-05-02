@@ -131,10 +131,13 @@ different pool assignments: %s' % samp + Bcolors.ENDC)
         samp2pool[samp] = pool
         df = data[data['pool_name'] == pool].copy()
         if not luni(df['ploidy']) == 1:
-            print("the ploidy values for some elements with pool name '%s' are not the same" % pool)
-            sys.exit(1)
-        if pool not in ploidy:
-            ploidy[pool] = data.loc[row, 'ploidy']
+            print(Bcolors.WARNING + 
+                  "The ploidy values for some elements with pool name '%s' are not the same." % pool +
+                  "\n\tHere are the ploidy values: %s" % ', '.join(uni(df['ploidy'])) +
+                  Bcolors.ENDC)
+            askforinput()
+        if samp not in ploidy:
+            ploidy[samp] = data.loc[row, 'ploidy']
         if pool in poolref:
             if not poolref[pool] == data.loc[row, 'ref']:
                 print("ref genome for samples in %s pool seems to have different paths in datatable.txt" % pool)
