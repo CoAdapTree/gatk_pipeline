@@ -2,12 +2,17 @@
 ### usage
 # usage: 00_start-gatk_pipeline.py -p PARENTDIR [-e EMAIL [-n EMAIL_OPTIONS]]
 ###
+
+### fix
+# dicts with samps as keys assume adaptors, ref, rglb, etc are same for reseqs
+# (the second file with samp as key will overwrite the last)
+# as of now, that hasn't created an issue
+###
 """
 
 import os, sys, distutils.spawn, subprocess, shutil, argparse, pandas as pd
 import balance_queue
 from os import path as op
-from collections import OrderedDict
 from coadaptree import fs, pkldump, uni, luni, makedir
 
 
@@ -87,7 +92,6 @@ def make_pooldirs(data, parentdir):
         DIR = op.join(parentdir, p)
         if op.exists(DIR):
             print("The pooldir already exists, this could overwrite previous data: %s" % DIR)
-            print("Do you want to proceed?")
             askforinput()
         pooldirs.append(makedir(DIR))
         makedir(op.join(DIR, 'shfiles'))
@@ -110,7 +114,7 @@ FAIL: exiting 00_start-gatk_pipeline.py''' % datatable + Bcolors.ENDC)
     poolsamps = {}  # key=pool val=sampnames
     f2samp = {}     # key=f val=samp
     f2pool = {}     # key=f val=pool
-    adaptors = OrderedDict()  # key=samp val={'r1','r2'} val=adaptor
+    adaptors = {}   # key=samp val={'r1','r2'} val=adaptor
     for row in data.index:
         samp = data.loc[row, 'sample_name']
         adaptors[samp] = {'r1': data.loc[row, 'adaptor_1'],
@@ -133,7 +137,7 @@ different pool assignments: %s' % samp + Bcolors.ENDC)
         if not luni(df['ploidy']) == 1:
             print(Bcolors.WARNING + 
                   "The ploidy values for some elements with pool name '%s' are not the same." % pool +
-                  "\n\tHere are the ploidy values: %s" % ', '.join(uni(df['ploidy'])) +
+                  "\n\tHere are the ploidy values: %s" % ', '.join(str(uni(df['ploidy']))) +
                   Bcolors.ENDC)
             askforinput()
         if samp not in ploidy:
