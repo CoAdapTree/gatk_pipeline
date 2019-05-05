@@ -137,7 +137,7 @@ different pool assignments: %s' % samp + Bcolors.ENDC)
         if not luni(df['ploidy']) == 1:
             print(Bcolors.WARNING + 
                   "The ploidy values for some elements with pool name '%s' are not the same." % pool +
-                  "\n\tHere are the ploidy values: %s" % ', '.join(str(uni(df['ploidy']))) +
+                  "\n\tHere are the ploidy values: %s" % uni(df['ploidy']) +
                   Bcolors.ENDC)
             askforinput()
         if samp not in ploidy:
