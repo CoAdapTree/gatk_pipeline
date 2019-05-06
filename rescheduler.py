@@ -260,8 +260,10 @@ if len(outs) > 0:
                             os.system('echo linked to %s' % trushfile)
                             with open(trushfile,'r') as O:
                                 sh = O.read()
-#                             sh = open(trushfile).read()
-                            if '4000M' in sh:
+                            if '2000M' in sh:
+                                text = sh.replace("2000M", "4000M")
+                                os.system('echo increasing mem to 4G')
+                            elif '4000M' in sh:
                                 text = sh.replace("4000M", "12000M")
                                 os.system('echo increasing mem to 12G')
                             elif '6500M' in sh:
