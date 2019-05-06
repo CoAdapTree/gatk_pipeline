@@ -67,19 +67,19 @@ def delsched(scheduler):
 
 
 def getpids():
-    pids = os.popen('squeue -u lindb -o "%i"').read().split("\n")
+    pids = os.popen('squeue -u lindb -h -o "%i"').read().split("\n")
     pids = [p for p in pids if not p == '']
     if len(pids) != len(set(pids)):
         print('len != luni pids')
         delsched(scheduler)
         exit()
-    return pids[1:]
+    return pids
 
 
 def startscheduler(scheduler):
     with open(scheduler, 'w') as o:
         # after creating the file, write job id in case i want to cancel process
-        jobid = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n", "")
+        jobid = os.environ['SLURM_JOB_ID']
         o.write("scheduler id = %s" % jobid)
     # double check that the scheduler is correct
     with open(scheduler, 'r') as o:
@@ -107,7 +107,7 @@ def sbatchjobs(files):
 def main(scheddir):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
-    x = sq("squeue -u %(user)s | grep scatter " % globals()) # number of gvcf jobs in the queue
+    x = sq("squeue -u %s | grep scatter " % os.environ['USER']) # number of gvcf jobs in the queue
     print ('queue length = ', x)
     if x < qthresh: # if there is room in the queue
         print('scheduler not running')
@@ -115,7 +115,10 @@ def main(scheddir):
         nsbatch = qthresh - x # how many should I submit?
         print ('nsbatch =', nsbatch)
         print (len(fs(scheddir)))
-        files = [f for f in fs(scheddir) if 'scheduler.txt' not in f and '.out' not in f and 'workingdir' not in f][0:nsbatch]
+        files = [f for f in fs(scheddir) 
+                 if 'scheduler.txt' not in f 
+                 and '.out' not in f 
+                 and 'workingdir' not in f][0:nsbatch]
         if len(files) > 0:
             print('submitting %s jobs' % str(len(files)))
             print(files)
@@ -132,17 +135,18 @@ def main(scheddir):
 def bigbrother(scheduler, scheddir):
     # if the scheduler controller has died, remove the scheduler
     with open(scheduler, 'r') as o:
-        text = o.read().replace("\n", "")
+        text = o.read()
     pid = text.split()[-1]
     if not pid == '=':
         pids = getpids()
         if not pid in pids:
-            print('controller was not running, so the scheduler was destroyed')
+            print(f'controller ({pid}) was not running, so the scheduler was destroyed')
             delsched(scheduler)
             main(scheddir)
         else:
             print('controller is running, allowing it to proceed')
 ###
+
 
 # main
 time.sleep(random.random())  # just in case the very first instances of scheduler.py start at v similar times
