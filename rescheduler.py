@@ -28,7 +28,6 @@ scheddir = op.join(parentdir, 'shfiles/gvcf_shfiles')
 os.chdir(scheddir)
 outs = [f for f in fs(scheddir) if f.endswith('out') and 'checked' not in f and 'swp' not in f]
 rescheduler = op.join(scheddir, 'rescheduler.txt')
-samp2pool = pklload(op.join(parentdir, 'samp2pool.pkl'))
 
 
 def vcf2sh(v):
@@ -117,7 +116,7 @@ def bigbrother(rescheduler):
 createdrescheduler = False
 sq = getsq(states=['running'])
 print('len(sq) = ', len(sq))
-print(sq)
+#print(sq)
 pids = getpids(sq)
 #print(pids)
 runs = []
@@ -171,9 +170,9 @@ if len(outs) > 0:
                         break
             if founderror is True:
                 for test in o[-20:]: # look for a timeout error 
-                    if 'time limit' in test.lower() or 'cancelled' in test.lower():
+                    if 'time limit' in test.lower() or 'cancelled' in test.lower() or 'slurmstepd: error: get_exit_code task 0 died by signal' in test:
                         timelimit = True
-                        if 'cancelled' in test.lower():
+                        if 'cancelled' in test.lower() or 'slurmstepd: error: get_exit_code task 0 died by signal' in test:
                             cancelled = True
                         break
                 if timelimit is True:
