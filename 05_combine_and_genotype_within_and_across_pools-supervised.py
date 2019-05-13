@@ -196,6 +196,6 @@ for sh in shfiles:
         print('could not create symlink')
         
 # # submit to scheduler, balance accounts
-os.system('python $HOME/gatk_pipeline/genotyping_scheduler.py %s' parentdir)
+os.system('python $HOME/gatk_pipeline/genotyping_scheduler.py %s' % parentdir)
 
 print(shdir, len( ls(shdir) ) )
