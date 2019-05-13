@@ -162,7 +162,7 @@ if len(outs) > 0:
         with open(rescheduler,'r') as o:
             text = o.read()
         if not text.split()[-1] == '=':
-            if not text.split()[-1] == jobid:
+            if not text.split()[-1] == os.environ['SLURM_JOB_ID']:
                 os.system('echo another rescheduler is in conflict. Allowing other rescheduler to proceed. Exiting')
                 time.sleep(5)
                 exit()
