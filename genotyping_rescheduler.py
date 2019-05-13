@@ -10,6 +10,7 @@
 import sys
 from coadaptree import *
 import shutil
+from balance_queue import getsq
 ###
 
 ### args
@@ -69,44 +70,14 @@ def delrescheduler(rescheduler,createdrescheduler):
 
 
 def getallpids():
-    pids = os.popen(f'squeue -u {os.environ["USER"]} -o "%i"').read().split("\n")
+    user = os.environ["USER"]
+    pids = os.popen(f'squeue -u {user} -o "%i"').read().split("\n")
     pids = [p for p in pids if not p == '']
     if len(pids) != len(set(pids)):
         print('len !- luni pids')
         delrescheduler(rescheduler,globals()['createdrescheduler'])
         exit()
     return pids[1:]
-
-
-def checksq(rt):
-    exitneeded = False
-    if not type(rt) == list:
-        os.system('echo "type(sq) != list, exiting rescheduler.py"')
-        exitneeded = True
-#     if len(rt) == 0:
-#         os.system('echo "len(sq) == 0, exiting rescheduler.py"')
-#         exitneeded = True
-    count = 0
-    for s in rt:
-        if 'socket' in s.lower():
-            os.system('echo "socket in sq return, exiting rescheduler.py"')
-            exitneeded = True
-        try:
-            assert int(s.split()[0]) == float(s.split()[0])
-            count += 1
-        except:
-            os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
-            exitneeded = True
-    if count == 0 and len(rt) > 0:
-        os.system('echo never asserted pid, exiting rescheduler.py')
-        exitneeded = True
-    if exitneeded == True:
-        delrescheduler(rescheduler,globals()['createdrescheduler'])
-        exit()
-
-
-def getsq():
-    return [x for x in os.popen("squeue -u %s -t RUNNING" % os.environ['USER']).read().split("\n") if not x == '']
 
 
 def removeworker(DIR,trushfile):
@@ -166,9 +137,9 @@ def checktbis(shfile):
 
 
 # identify outs that aren't running
-sq = getsq()
+# sq = getsq() # return [x for x in os.popen("squeue -u %s -t RUNNING" % os.environ['USER']).read().split("\n") if not x == '']
+sq = getsq(states=['running'])
 #print(sq)
-checksq(sq)
 pids = getpids(sq)
 #print(pids)
 runs = []
@@ -185,8 +156,7 @@ if len(outs) > 0:
     if not op.exists(rescheduler):
         # reserve the rescheduler
         with open(rescheduler,'w') as o:
-            jobid = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
-            o.write("rescheduler id = %s" % jobid)
+            o.write("rescheduler id = %s" % os.environ['SLURM_JOB_ID'])
         createdrescheduler = True
         # double check that the rescheduler is correct
         with open(rescheduler,'r') as o:
@@ -200,8 +170,7 @@ if len(outs) > 0:
         # look for errors in outfiles and resubmit the error-causing shfile using more mem or time
         for out in outs:
             #check again to see if job is running
-            sq = getsq()
-            checksq(sq)
+            sq = getsq(states=['running'])
             pids = getpids(sq)
             pid = op.basename(out).split(".out")[0].split("---")[-1] 
             if pid in pids:
