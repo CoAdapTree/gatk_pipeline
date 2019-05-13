@@ -99,7 +99,7 @@ def main(DIR):
 def bigbrother(scheduler,DIR):
     # if the scheduler controller has died, remove the scheduler
     with open(scheduler,'r') as o:
-        text = o.read().replace("\n","")
+        text = o.read()
     pid = text.split()[-1]
     if not pid == '=':
         pids = getpids()

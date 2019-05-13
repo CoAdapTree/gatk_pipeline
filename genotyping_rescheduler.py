@@ -133,7 +133,7 @@ def getpids(sq):
 def bigbrother(rescheduler):
     # if the scheduler controller has died, remove the scheduler
     with open(rescheduler,'r') as o:
-        text = o.read().replace("\n","")
+        text = o.read()
     pid = text.split()[-1]
     if not pid == '=':
         pids = getallpids()
