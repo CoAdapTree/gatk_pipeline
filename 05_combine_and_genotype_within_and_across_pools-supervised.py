@@ -18,6 +18,7 @@ if parentdir.endswith("/"):
 samp2pool = pklload(op.join(parentdir, 'samp2pool.pkl'))
 poolref   = pklload(op.join(parentdir, 'poolref.pkl'))  #key=pool val=/path/to/ref.fa
 pools = uni(list(samp2pool.values()))
+poolsamps = pklload(op.join(parentdir, 'poolsamps.pkl'))
 ###
 
 # get a list of subdirectory pool dirs created earlier in pipeline
@@ -41,21 +42,22 @@ for d in pooldirs:
         if not sp in spp:
             spp[sp] = {}
         if splits[1].startswith('p'):
-            kind  = 'pooled'          ######################## CHANGE THIS BACK FOR MULTI-POOL GENOTYPING!!!!!!!!!!!!!!!!
-            if not kind in spp[sp]:   ######################## CHANGE THIS BACK FOR MULTI-POOL GENOTYPING!!!!!!!!!!!!!!!!
-                spp[sp][kind]  = []   ######################## CHANGE THIS BACK FOR MULTI-POOL GENOTYPING!!!!!!!!!!!!!!!!
-            spp[sp][kind].append(f)   ######################## CHANGE THIS BACK FOR MULTI-POOL GENOTYPING!!!!!!!!!!!!!!!!
-#             kind2 = op.basename(d) # for single pool genotyping
-#             if not kind2 in spp[sp]:
-#                 spp[sp][kind2] = []
-#             spp[sp][kind2].append(f)
+#             kind  = 'pooled'          ######################## CHANGE THIS BACK FOR MULTI-POOL GENOTYPING
+#             if not kind in spp[sp]:   ######################## CHANGE THIS BACK FOR MULTI-POOL GENOTYPING
+#                 spp[sp][kind]  = []   ######################## CHANGE THIS BACK FOR MULTI-POOL GENOTYPING
+#             spp[sp][kind].append(f)   ######################## CHANGE THIS BACK FOR MULTI-POOL GENOTYPING
+            kind2 = op.basename(d) # for single pool genotyping
+            if not kind2 in spp[sp]:
+                spp[sp][kind2] = []
+            spp[sp][kind2].append(f)
         else:
-            kind = 'unpooled'
+            kind = op.basename(d)
             if not kind in spp[sp]: 
                 spp[sp][kind]  = []
-            spp[sp][kind].append(f) 
-for kind in spp['DF']:
-    print(kind,len(spp['DF'][kind]))
+            spp[sp][kind].append(f)
+for sp in spp:
+    for kind in spp[sp]:
+        print('found ', len(spp[sp][kind]),' files for pool: ', kind)
 
 # create some dirs
 outdir = op.join(parentdir, 'snps')
@@ -64,18 +66,19 @@ createdirs([outdir,shdir])
 
 # get a list of snpfiles that have already been made
 snpfiles = [f.replace(".tbi","") for f in fs(outdir) if 'snps' in op.basename(f) and f.endswith('.tbi')]
-print('len(snpfiles)=',len(snpfiles))
-print(snpfiles[0])
+print('len(snpfiles) = ',len(snpfiles))
 
 
 # make sh files
 alreadycreated = [f for f in fs(shdir) if f.endswith('.sh') and 'swp' not in f]
-print('len(alreadycreated)=', len(alreadycreated))
+print('len(alreadycreated) = ', len(alreadycreated))
 shfiles = []
 newfiles = Counter()
 for sp in spp:
     print(sp)
     for kind in spp[sp]:
+        if kind in pools:
+            thresh = len(poolsamps[kind])
         writesh = False
         print('\t',kind)
         # get the files that need to be combined
@@ -94,15 +97,14 @@ for sp in spp:
         ref = poolref[POOL] # doesn't matter which pool I use, will be same ref (POOL is from iter)
         # get commands
         for scaff in groups:
-#             print('len(groups[%s])= '%scaff,len(groups[scaff]))
-            cmds = '''''' # I think this might need to be moved about the for loop? it might be working bc ...?
+            cmds = ''''''
             combfile = op.join(outdir, '%s--%s_combined.vcf.gz' % (pools, scaff))
             gfile = combfile.replace("_combined.vcf.gz","_genotyped.vcf.gz")
             snpfile = gfile.replace("_genotyped.vcf.gz","_snps.vcf.gz")
             if snpfile in snpfiles:
                 continue
-#             if (len(groups[scaff]) == 20 and kind == 'unpooled') or (len(groups[scaff]) == 2 and kind == 'pooled'):
-            if len(groups[scaff]) == 2 and kind == 'pooled':
+
+            if len(groups[scaff]) == thresh:
                 # these files need to be combined
                 varcmd = '--variant ' + ' --variant '.join([x for x in sorted(groups[scaff])])
                 cmds = '''echo COMBINING GVCFs
@@ -115,12 +117,9 @@ echo SELECTING VARIANTS
 gatk SelectVariants -R %(ref)s -V %(gfile)s --select-type-to-include SNP --restrict-alleles-to BIALLELIC -O %(snpfile)s
 
 ''' % locals()
-            elif len(groups[scaff]) == 1 and kind not in ['unpooled','pooled']: # otherwise if jobs aren't finished, cross-pool sh will skip combining
+            elif len(groups[scaff]) == 1 and kind not in ['unpooled','pooled']:
                 # symlink vcf and tbi file
-                continue           ####################################################### DELETE THIS! #####################
                 f = groups[scaff][0] # skip symlink and just specify original file
-#                 gfile    = combfile.replace("_combined.vcf.gz","_genotyped.vcf.gz") # keep this
-#                 snpfile  = gfile.replace("_genotyped.vcf.gz","_snps.vcf.gz")
                 cmds = '''echo GENOTYPING GVCFs
 gatk --java-options "-Xmx4g" GenotypeGVCFs -R %(ref)s -V %(f)s -O %(gfile)s 
 
@@ -129,7 +128,8 @@ gatk SelectVariants -R %(ref)s -V %(gfile)s --select-type-to-include SNP --restr
 
 ''' % locals()
             else:
-                print('\t', sp, kind, scaff, 'doesnt have enough files')
+                missing = thresh - len(groups[scaff])
+                print('\t', sp, kind, scaff, 'doesnt have enough files, missing %s files.' % str(missing)
                 continue
             file = op.join(shdir, 'genotype---%(pools)s--%(scaff)s.sh' % locals())
             if not file in alreadycreated: # this way I can start running the genotyping stage before all files are ready
@@ -140,43 +140,42 @@ gatk SelectVariants -R %(ref)s -V %(gfile)s --select-type-to-include SNP --restr
                 else:
                     mem = '12000M'
                     time = '11:59:00'
-#                     print('\t','\t',file)
                 text = '''#!/bin/bash
 #SBATCH --time=%(time)s
 #SBATCH --ntasks=1
 #SBATCH --mem=%(mem)s
 #SBATCH --cpus-per-task=1
 #SBATCH --job-name=genotype---%(pools)s--%(scaff)s
-#SBATCH --export=all
 #SBATCH --output=genotype---%(pools)s--%(scaff)s---%%j.out 
 
 source $HOME/.bashrc
+export PYTHONPATH="${PYTHONPATH}:$HOME/gatk_pipeline"
+export SQUEUE_FORMAT="%%.8i %%.8u %%.12a %%.68j %%.3t %%16S %%.10L %%.5D %%.4C %%.6b %%.7m %%N (%%r)"
+
 cat $0
 # next line necessary for rescheduler
 echo shfile = %(file)s
 
 # requeue jobs with errors
-cd $HOME/gatk_pipeline
-python genotyping_rescheduler.py %(parentdir)s
+python $HOME/gatk_pipeline/genotyping_rescheduler.py %(parentdir)s
 
 # fill up the queue
-python genotyping_scheduler.py %(parentdir)s
+python $HOME/gatk_pipeline/genotyping_scheduler.py %(parentdir)s
 
 # genotype current file
 module load gatk/4.1.0.0
 %(cmds)s
+module unload gatk
 
 # keep running jobs until time runs out
 echo getting help from genotyping_helper
-cd $HOME/gatk_pipeline
-python genotyping_helper.py %(parentdir)s %(snpfile)s
+python $HOME/gatk_pipeline/genotyping_helper.py %(parentdir)s %(snpfile)s
 
 # # in case there's time, schedule the next batch
 # source $HOME/.bashrc # rescue python env from from evil module
 # python 03_combine_and_genotype_within_and_across_pools-supervised.py %(parentdir)s
 
 ''' % locals()
-                # do not want files created edited by genotyping_rescheduler to change time/mem back to default
                 with open(file, 'w') as o:
                     o.write("%s" % text)
                 shfiles.append(file)
@@ -197,6 +196,6 @@ for sh in shfiles:
         print('could not create symlink')
         
 # # submit to scheduler, balance accounts
-# os.system('python $HOME/gatk_pipeline/genotyping_scheduler.py %s' parentdir)
+os.system('python $HOME/gatk_pipeline/genotyping_scheduler.py %s' parentdir)
 
 print(shdir, len( ls(shdir) ) )
