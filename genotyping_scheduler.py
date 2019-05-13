@@ -13,12 +13,8 @@ from os import path as op
 from os import listdir
 import time
 import random
-def ls(DIR):
-    return sorted([f for f in listdir(DIR)])
-def fs (DIR):
-    return sorted([op.join(DIR,f) for f in ls(DIR)])
-def luni(mylist):
-    return len(set(mylist))
+from coadaptree import *
+from balance_queue import getsq
 ###
 
 ### args
@@ -29,44 +25,16 @@ thisfile, parentdir = sys.argv
 if parentdir.endswith("/"): #sometimes I run the scheduler from the command line, which appends / which screws up op.dirname()
     parentdir = parentdir[:-1]
 scheddir  = op.join(parentdir,'shfiles/supervised/select_variants_within_and_across')
-print("scheddir=",scheddir)
+print("scheddir = ",scheddir)
 assert op.exists(scheddir)
 scheduler = op.join(scheddir,'scheduler.txt')
 os.chdir(scheddir)
-qthresh   = 1
-user = os.popen("echo $USER").read().replace("\n","")
+qthresh   = 5
+user = os.environ['USER']
 ###
 
 ### defs
 print('running scheduler.py')
-def checksq(rt):
-    exitneeded = False
-    if not type(rt) == list:
-        os.system('echo "type(sq) != list, exiting rescheduler.py"')
-        exitneeded = True
-    count = 0
-    for s in rt:
-        if 'socket' in s.lower():
-            os.system('echo "socket in sq return, exiting rescheduler.py"')
-            exitneeded = True
-        try:
-#             print(s)
-            assert int(s.split()[0]) == float(s.split()[0])
-            count =+ 1
-        except:
-            os.system('echo "could not assert int == float, %s %s"' % (s[0],s[0]))
-            exitneeded = True
-    if count == 0 and len(rt) > 0:
-        os.system('echo never asserted pid, exiting rescheduler.py')
-        exitneeded = True
-    if exitneeded == True:
-        delsched(globals()['scheduler'])
-        exit()
-def sq(command):
-    # how many jobs are running
-    q = [x for x in os.popen(str(command)).read().split("\n") if not x == '']
-    checksq(q)
-    return len(q)
 def delsched(scheduler):
     # stop scheduler
     try:
@@ -74,7 +42,7 @@ def delsched(scheduler):
     except:
         pass
 def getpids():
-    pids = os.popen('squeue -u lindb -o "%i"').read().split("\n")
+    pids = os.popen(f'squeue -u {os.environ["USER"]} -o "%i"').read().split("\n")
     pids = [p for p in pids if not p == '']
     if len(pids) != luni(pids):
         print('len !- luni pids')
@@ -84,7 +52,7 @@ def getpids():
 def startscheduler(scheduler):
     with open(scheduler,'w') as o:
         # after creating the file, write job id in case i want to cancel process
-        jobid = os.popen('echo ${SLURM_JOB_ID}').read().replace("\n","")
+        jobid = os.environ['SLURM_JOB_ID']
         o.write("scheduler id = %s" % jobid)
     # double check that the scheduler is correct
     with open(scheduler,'r') as o:
@@ -108,7 +76,7 @@ def sbatchjobs(files):
 def main(DIR):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
-    x = sq("squeue -u %(user)s | grep genotype " % globals()) # number of genotyping jobs in the queue
+    x = len(getsq(grepping=['genotype']))
     print ('queue length = ',x)
     if x < qthresh: # if there is room in the queue
         print('scheduler not running')

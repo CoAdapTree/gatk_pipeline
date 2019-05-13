@@ -69,7 +69,7 @@ def delrescheduler(rescheduler,createdrescheduler):
 
 
 def getallpids():
-    pids = os.popen('squeue -u lindb -o "%i"').read().split("\n")
+    pids = os.popen(f'squeue -u {os.environ["USER"]} -o "%i"').read().split("\n")
     pids = [p for p in pids if not p == '']
     if len(pids) != len(set(pids)):
         print('len !- luni pids')
@@ -106,7 +106,7 @@ def checksq(rt):
 
 
 def getsq():
-    return [x for x in os.popen("squeue -u lindb | grep 'R 2'").read().split("\n") if not x == '']
+    return [x for x in os.popen("squeue -u %s -t RUNNING" % os.environ['USER']).read().split("\n") if not x == '']
 
 
 def removeworker(DIR,trushfile):
@@ -125,7 +125,7 @@ def getpids(sq):
     pids = []
     for s in sq:
         if not s == '':
-            pid = s.split()[0]
+            pid = s[0]
             pids.append(pid)
     return pids
 
@@ -375,5 +375,5 @@ else:
     os.system('echo rescheduler found no outfiles to analyze or all outfiles are for jobs currently running')
 
 delrescheduler(rescheduler,createdrescheduler)
-if not createdrescheduler == False and op.exists(rescheduler):
+if createdrescheduler is False and op.exists(rescheduler):
     bigbrother(rescheduler)
