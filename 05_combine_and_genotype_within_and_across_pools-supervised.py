@@ -198,4 +198,4 @@ for sh in shfiles:
 # # submit to scheduler, balance accounts
 os.system('python $HOME/gatk_pipeline/genotyping_scheduler.py %s' % parentdir)
 
-print(shdir, len( ls(shdir) ) )
+print(shdir, len( fs(shdir) ) )
