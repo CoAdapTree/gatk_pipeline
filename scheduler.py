@@ -135,7 +135,7 @@ def main(scheddir):
 def bigbrother(scheduler, scheddir):
     # if the scheduler controller has died, remove the scheduler
     with open(scheduler, 'r') as o:
-        text = o.read()
+        text = o.read().replace("\n","")
     pid = text.split()[-1]
     if not pid == '=':
         pids = getpids()
