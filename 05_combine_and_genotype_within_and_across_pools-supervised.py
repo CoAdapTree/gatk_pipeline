@@ -129,7 +129,7 @@ gatk SelectVariants -R %(ref)s -V %(gfile)s --select-type-to-include SNP --restr
 ''' % locals()
             else:
                 missing = thresh - len(groups[scaff])
-                print('\t', sp, kind, scaff, 'doesnt have enough files, missing %s files.' % str(missing)
+                print('\t', sp, kind, scaff, 'doesnt have enough files, missing %s files.' % str(missing))
                 continue
             file = op.join(shdir, 'genotype---%(pools)s--%(scaff)s.sh' % locals())
             if not file in alreadycreated: # this way I can start running the genotyping stage before all files are ready
