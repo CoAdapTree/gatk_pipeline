@@ -134,16 +134,10 @@ gatk SelectVariants -R %(ref)s -V %(gfile)s --select-type-to-include SNP --restr
             file = op.join(shdir, 'genotype---%(pools)s--%(scaff)s.sh' % locals())
             if not file in alreadycreated: # this way I can start running the genotyping stage before all files are ready
                 newfiles[kind] += 1
-                if kind == 'unpooled':
-                    mem = '15000M'
-                    time = '7-0:0:0'
-                else:
-                    mem = '12000M'
-                    time = '11:59:00'
                 text = '''#!/bin/bash
-#SBATCH --time=%(time)s
+#SBATCH --time=11:59:00
 #SBATCH --ntasks=1
-#SBATCH --mem=%(mem)s
+#SBATCH --mem=20000M
 #SBATCH --cpus-per-task=1
 #SBATCH --job-name=genotype---%(pools)s--%(scaff)s
 #SBATCH --output=genotype---%(pools)s--%(scaff)s---%%j.out 
