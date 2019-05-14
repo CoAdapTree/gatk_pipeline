@@ -303,7 +303,7 @@ if len(outs) > 0:
                                 os.system('echo increasing mem to 12G')
                             elif '=12000M' in sh:
                                 text = sh.replace('=12000M','=20000M')
-                                os.system('echo increasing mem to 30G')
+                                os.system('echo increasing mem to 20G')
                             elif '=20000M' in sh:
                                 text = sh.replace('=20000M','=30000M')
                                 os.system('echo increasing mem to 30G')
