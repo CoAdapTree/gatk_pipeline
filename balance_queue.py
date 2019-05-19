@@ -1,4 +1,6 @@
 """
+Distribute priority jobs among accounts.
+
 ###
 # usage: balance_queue.py phaseOFpipeline
 ###
@@ -14,6 +16,12 @@ import os, shutil, sys, math, subprocess, time
 
 
 def announceacctlens(accounts, fin):
+    """How many priority jobs does each account have?
+    
+    Positional arguments:
+    accounts - dictionary with key = account_name, val = list of jobs (squeue output)
+    fin - True if this is the final job announcement, otherwise the first announcement
+    """
     print('%s job announcement' % ('final' if fin is True else 'first'))
     if fin is True:
         time.sleep(1)
@@ -22,6 +30,12 @@ def announceacctlens(accounts, fin):
 
 
 def checksq(sq):
+    """Make sure queue slurm command worked.
+    
+    Positional arguments:
+    sq - list of squeue slurm command jobs, each line is str.split()
+       - slurm_job_id is zeroth element of str.split()
+    """
     exitneeded = False
     if not isinstance(sq, list):
         print("type(sq) != list, exiting %(thisfile)s" % globals())
@@ -41,6 +55,11 @@ def checksq(sq):
 
 
 def getsq_exit(balancing):
+    """Determine if getsq is being used to balance priority jobs.
+
+    Positional arguments:
+    balancing - bool: True if using to balance priority jobs, else for other queue queries
+    """
     print('no jobs in queue matching query')
     if balancing is True:
         print('exiting balance_queue.py')
@@ -50,6 +69,18 @@ def getsq_exit(balancing):
 
 
 def getsq(grepping=None, states=[], balancing=False):
+    """
+    Get jobs from squeue slurm command matching crieteria.
+
+    Positional arguments:
+    grepping - list of key words to look for in each column of job info
+    states - list of states {pending, running} wanted in squeue jobs
+    balancing - bool: True if using to balance priority jobs, else for other queue queries
+
+    Returns:
+    grepped - list of tuples where tuple elements are line.split() for each line of squeue \
+slurm command that matched grepping queries
+    """
     if grepping is None:
         grepping = [os.environ['USER']]
     if isinstance(grepping, str):
@@ -83,7 +114,7 @@ def getsq(grepping=None, states=[], balancing=False):
                             if grep.lower() in split.lower():
                                 keepit += 1
                                 break
-                if (keepit == len(grepping) and len(grepping) != 0):
+                if keepit == len(grepping) and len(grepping) != 0:
                     grepped.append(tuple(splits))
 
         if len(grepped) > 0:
@@ -92,6 +123,7 @@ def getsq(grepping=None, states=[], balancing=False):
 
 
 def adjustjob(acct, jobid):
+    """Move job from one account to another."""
     subprocess.Popen([shutil.which('scontrol'),
                       'update',
                       'Account=%s_cpu' % acct,
@@ -99,6 +131,14 @@ def adjustjob(acct, jobid):
 
 
 def getaccounts(sq, stage):
+    """
+Count the number of priority jobs assigned to each account.
+
+Positional arguments:
+sq - list of squeue slurm command jobs, each line is str.split()
+   - slurm_job_id is zeroth element of str.split()
+stage - stage of pipeline, used as keyword to filter jobs in queue
+    """
     accounts = {}
     for q in sq:
         pid = q[0]
@@ -116,6 +156,12 @@ def getaccounts(sq, stage):
 
 
 def getbalance(accounts, num):
+    """Determine how many jobs should be given from one account to another.
+
+    Positional arguments:
+    accounts - dictionary with key = account_name, val = list of jobs (squeue output)
+    num - number of accounts to balance among (this needs to be changed to object not number)
+    """
     sums = 0
     for account in accounts:
         sums += len(accounts[account].keys())
@@ -162,6 +208,12 @@ def getbalance(accounts, num):
 
 
 def gettaker(accounts, defs):
+    """Determine which job should receive jobs from the one with priority jobs.
+
+    Positional arguments:
+    accounts - dictionary with key = account_name, val = list of jobs (squeue output)
+    defs - default account names to balance among. (TODO: will 'work' if defs > 2, but won't evenly dist.)
+    """
     giver = ''
     keys = list(accounts.keys())
     if len(keys) > 1:
@@ -181,6 +233,13 @@ def gettaker(accounts, defs):
 
 
 def givetotaker(giver, taker, accounts, bal):
+    """Give jobs to the account without jobs with priority status.
+
+    Positional arguments:
+    giver - account giving jobs to taker
+    taker - account receiving jobs from giver
+    accounts - dictionary with key = account_name, val = list of jobs (squeue output)
+    """
     taken = 0
     pids = list(accounts[giver].keys())
     numtotake = len(pids) - bal
@@ -204,6 +263,7 @@ def givetotaker(giver, taker, accounts, bal):
 
 
 def get_availaccounts():
+    """Query slurm with sshare command to determine accounts available."""
     acctout = subprocess.check_output([shutil.which('sshare'),
                                        '-U',
                                        '--user',
@@ -214,7 +274,7 @@ def get_availaccounts():
     rac = [acct for acct in accts if 'rrg' in acct]
     if len(defs) == 1:
         # no need to try and balance
-        print('there is only one account (%s), no more accounts to balance queue.\nexiting balance_queue.py' % defs[0])
+        print('there is only one account (%s), no more accounts to f queue.\nexiting balance_queue.py' % defs[0])
         exit()
     if len(rac) == 1:
         rac = rac[0]
