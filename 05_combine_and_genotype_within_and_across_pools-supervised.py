@@ -77,6 +77,7 @@ newfiles = Counter()
 for sp in spp:
     print(sp)
     for kind in spp[sp]:
+        print('kind =', kind)
         if kind in pools:
             thresh = len(poolsamps[kind])
         writesh = False
@@ -111,13 +112,13 @@ for sp in spp:
 gatk CombineGVCFs -R %(ref)s %(varcmd)s -O %(combfile)s 
 
 echo GENOTYPING GVCFs
-gatk --java-options "-Xmx4g" GenotypeGVCFs -R %(ref)s -V %(combfile)s -O %(gfile)s 
+gatk GenotypeGVCFs -R %(ref)s -V %(combfile)s -O %(gfile)s 
 
 echo SELECTING VARIANTS
 gatk SelectVariants -R %(ref)s -V %(gfile)s --select-type-to-include SNP --restrict-alleles-to BIALLELIC -O %(snpfile)s
 
 ''' % locals()
-            elif len(groups[scaff]) == 1 and kind not in ['unpooled','pooled']:
+            elif len(groups[scaff]) == 1 and kind not in ['unpooled','pooled'] and kind not in poolsamps.keys():
                 # symlink vcf and tbi file
                 f = groups[scaff][0] # skip symlink and just specify original file
                 cmds = '''echo GENOTYPING GVCFs
@@ -137,10 +138,12 @@ gatk SelectVariants -R %(ref)s -V %(gfile)s --select-type-to-include SNP --restr
                 text = '''#!/bin/bash
 #SBATCH --time=11:59:00
 #SBATCH --ntasks=1
-#SBATCH --mem=20000M
+#SBATCH --mem=4000M
 #SBATCH --cpus-per-task=1
 #SBATCH --job-name=genotype---%(pools)s--%(scaff)s
 #SBATCH --output=genotype---%(pools)s--%(scaff)s---%%j.out 
+
+export _JAVA_OPTIONS="-Xms256m -Xmx3g"
 
 source $HOME/.bashrc
 export PYTHONPATH="${PYTHONPATH}:$HOME/gatk_pipeline"
@@ -159,15 +162,13 @@ python $HOME/gatk_pipeline/genotyping_scheduler.py %(parentdir)s
 # genotype current file
 module load gatk/4.1.0.0
 %(cmds)s
-module unload gatk
 
 # keep running jobs until time runs out
 echo getting help from genotyping_helper
-python $HOME/gatk_pipeline/genotyping_helper.py %(parentdir)s %(snpfile)s
+# python $HOME/gatk_pipeline/genotyping_helper.py %(parentdir)s %(snpfile)s
 
-# # in case there's time, schedule the next batch
-# source $HOME/.bashrc # rescue python env from from evil module
-# python 03_combine_and_genotype_within_and_across_pools-supervised.py %(parentdir)s
+# in case there's time, schedule the next batch
+python $HOME/gatk_pipeline/05_combine_and_genotype_within_and_across_pools-supervised.py %(parentdir)s
 
 ''' % locals()
                 with open(file, 'w') as o:
