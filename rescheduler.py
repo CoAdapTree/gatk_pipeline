@@ -170,9 +170,11 @@ if len(outs) > 0:
                         break
             if founderror is True:
                 for test in o[-20:]: # look for a timeout error 
-                    if 'time limit' in test.lower() or 'cancelled' in test.lower() or 'slurmstepd: error: get_exit_code task 0 died by signal' in test:
-                        timelimit = True
-                        if 'cancelled' in test.lower() or 'slurmstepd: error: get_exit_code task 0 died by signal' in test:
+                    if 'time limit' in test.lower() or 'cancelled' in test.lower():
+                        if 'time limit' in test.lower():
+                            timelimit = True
+                        else:
+                            # cancelled and time limit in test.lower()
                             cancelled = True
                         break
                 if timelimit is True:
@@ -260,13 +262,10 @@ if len(outs) > 0:
                             with open(trushfile,'r') as O:
                                 sh = O.read()
                             if '2000M' in sh:
-                                text = sh.replace("2000M", "4000M")
-                                os.system('echo increasing mem to 4G')
+                                text = sh.replace("2000M", "12000M")
+                                os.system('echo increasing mem to 12G')
                             elif '4000M' in sh:
                                 text = sh.replace("4000M", "12000M")
-                                os.system('echo increasing mem to 12G')
-                            elif '6500M' in sh:
-                                text = sh.replace('6500M', '12000M')
                                 os.system('echo increasing mem to 12G')
                             elif '8000M' in sh:
                                 text = sh.replace('8000M', '12000M')
