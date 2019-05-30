@@ -195,8 +195,10 @@ if len(outs) > 0:
             if founderror == True:
                 for test in o[-20:]: # look for a time error 
                     if 'time limit' in test.lower() or 'cancelled' in test.lower():
-                        timelimit = True
-                        if 'cancelled' in test.lower():
+                        if 'time limit' in test.lower():
+                            timelimit = True
+                        else:
+                            # cancelled and time limit in test.lower()
                             cancelled = True
                         break
                 if timelimit == True:
@@ -242,10 +244,13 @@ if len(outs) > 0:
                                     text = sh.replace('02:59:00','11:59:00')
                                     os.system('echo extending time to 11:59:00')
                                 elif '11:59:00' in sh:
-                                    text = sh.replace('11:59:00','23:59:00')
-                                    os.system('echo extending time to 23:59:00')
+                                    text = sh.replace('11:59:00','7-00:00:00')
+                                    os.system('echo extending time to 7-00:00:00')
                                 elif '23:59:00' in sh:
                                     text = sh.replace('23:59:00','7-00:00:00')
+                                    os.system('echo extending time to 7 days')
+                                elif '3-00:00:00' in sh:
+                                    text = sh.replace('3-00:00:00','7-00:00:00')
                                     os.system('echo extending time to 7 days')
                                 elif '7-00:00:00' in sh:
                                     text = sh.replace('7-00:00:00','14-00:00:00')
@@ -292,29 +297,29 @@ if len(outs) > 0:
                             os.system('echo linked to %s' % linkname)
                             with open(trushfile) as trush:
                                 sh = trush.read()
-                            if '=2000M' in sh:
-                                text = sh.replace("=2000M","=12000M")
-                                os.system('echo increasing mem to 4G')
-                            elif '=4000M' in sh:
+                            if '=4000M' in sh:
                                 text = sh.replace('=4000M','=12000M')
-                                os.system('echo increasing mem to 6.5G')
-                            elif '=6500M' in sh:
-                                text = sh.replace('=6500M','=12000M')
+                                text = sh.replace("-Xmx3g","-Xmx10g")
                                 os.system('echo increasing mem to 12G')
                             elif '=12000M' in sh:
                                 text = sh.replace('=12000M','=20000M')
+                                text = sh.replace("-Xmx10g","-Xmx18g")
                                 os.system('echo increasing mem to 20G')
                             elif '=20000M' in sh:
                                 text = sh.replace('=20000M','=30000M')
+                                text = sh.replace("-Xmx18g","-Xmx28g")
                                 os.system('echo increasing mem to 30G')
                             elif '=30000M' in sh:
                                 text = sh.replace('=30000M','=50000M')
+                                text = sh.replace("-Xmx28g","-Xmx48g")
                                 os.system('echo increasing mem to 50G')
                             elif '=50000M' in sh:
                                 text = sh.replace('=50000M','=120000M')
+                                text = sh.replace("-Xmx48g","-Xmx118g")
                                 os.system('echo increasing mem to 120G')
                             elif '=120000M' in sh:
                                 text = sh.replace('=120000M','=200000M')
+                                text = sh.replace("-Xmx118g","-Xmx198g")
                                 os.system('echo increasing mem to 200G')
                             with open(trushfile,'w') as o:
                                 o.write("%s" % text)
