@@ -230,9 +230,12 @@ if len(outs) > 0:
                                     text = sh.replace('11:59:00', '23:59:00')
                                     os.system('echo extending time to 23:59:00')
                                 elif '23:59:00' in sh:
-                                    text = sh.replace('23:59:00', '7-00:00:00')
+                                    text = sh.replace('23:59:00', '3-00:00:00')
+                                    os.system('echo extending time to 3 days')
+                                elif '3-00:00:00' in sh:
+                                    text = sh.replace('3-00:00:00', '7-00:00:00')
                                     os.system('echo extending time to 7 days')
-                                elif '14:30:00' in sh:
+                                elif '7-00:00:00' in sh:
                                     text = sh.replace('7-00:00:00', '14-00:00:00')
                                     os.system('echo replacing 14-hour time with 7 days')
                                 else:
