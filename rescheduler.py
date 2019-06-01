@@ -261,29 +261,29 @@ if len(outs) > 0:
                             os.system('echo linked to %s' % trushfile)
                             with open(trushfile,'r') as O:
                                 sh = O.read()
-                            if '2000M' in sh:
-                                text = sh.replace("2000M", "12000M")
+                            if '=2000M' in sh:
+                                text = sh.replace("=2000M", "=12000M")
                                 os.system('echo increasing mem to 12G')
-                            elif '4000M' in sh:
-                                text = sh.replace("4000M", "12000M")
+                            elif '=4000M' in sh:
+                                text = sh.replace("=4000M", "=12000M")
                                 os.system('echo increasing mem to 12G')
-                            elif '8000M' in sh:
-                                text = sh.replace('8000M', '12000M')
+                            elif '=8000M' in sh:
+                                text = sh.replace('=8000M', '=12000M')
                                 os.system('echo increasing mem to 12G')
-                            elif '12000M' in sh:
-                                text = sh.replace("12000M", "20000M")
+                            elif '=12000M' in sh:
+                                text = sh.replace("=12000M", "=20000M")
                                 os.system('echo increasing mem to 20G')
-                            elif '20000M' in sh:
-                                text = sh.replace('20000M', '30000M') # keep it in, i changed last if statment, was 8Gb->20Gb
+                            elif '=20000M' in sh:
+                                text = sh.replace('=20000M', '=30000M') # keep it in, i changed last if statment, was 8Gb->20Gb
                                 os.system('echo increasing mem to 30G')
-                            elif '30000M' in sh:
-                                text = sh.replace('30000M', '50000M')
+                            elif '=30000M' in sh:
+                                text = sh.replace('=30000M', '=50000M')
                                 os.system('echo increasing mem to 50G')
-                            elif '50000M' in sh:
-                                text = sh.replace('50000M', '100000M')
+                            elif '=50000M' in sh:
+                                text = sh.replace('=50000M', '=100000M')
                                 os.system('echo increasing mem to 100G')
-                            elif '100000M' in sh:
-                                text = sh.replace('100000M', '120000M')
+                            elif '=100000M' in sh:
+                                text = sh.replace('=100000M', '=120000M')
                                 os.system('echo increasing mem to 120G')
                             with open(trushfile, 'w') as O:
                                 O.write("%s" % text)
