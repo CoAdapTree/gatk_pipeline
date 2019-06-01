@@ -35,7 +35,7 @@ dupdir = op.dirname(dupfile)
 rawvcf = op.join(vcfdir, f'raw_{pool}-{samp}.g.vcf.gz')
 
 #get ploidy 
-ploidy = pklload(op.join(parentdir, 'ploidy.pkl'))[samp]
+ploidy = int(pklload(op.join(parentdir, 'ploidy.pkl'))[samp])
 print ('ploidy =', ploidy)
 
 # create sh files
