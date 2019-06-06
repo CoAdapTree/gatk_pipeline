@@ -13,7 +13,7 @@
 import os, sys, distutils.spawn, subprocess, shutil, argparse, pandas as pd
 import balance_queue
 from os import path as op
-from coadaptree import fs, pkldump, uni, luni, makedir
+from coadaptree import fs, pkldump, uni, luni, makedir, askforinput, Bcolors
 
 
 def create_sh(pooldirs, poolref):
@@ -30,19 +30,6 @@ def create_sh(pooldirs, poolref):
                          ref])
     print("\n")
     balance_queue.main('balance_queue.py', 'trim')
-
-
-def askforinput():
-    print('\n')
-    while True:
-        inp = input(Bcolors.WARNING + "INPUT NEEDED: Do you want to proceed? (yes | no): " + Bcolors.ENDC).lower()
-        if inp in ['yes', 'no']:
-            if inp == 'no':
-                print('exiting 00_start-gatk_pipeline.py')
-                exit()
-            break
-        else:
-            print(Bcolors.FAIL + "Please respond with 'yes' or 'no'" + Bcolors.ENDC)
 
 
 def get_datafiles(parentdir, f2pool, data):
@@ -334,15 +321,6 @@ def main():
 
 
 if __name__ == '__main__':
-    class Bcolors:
-        HEADER = '\033[95m'
-        OKBLUE = '\033[94m'
-        OKGREEN = '\033[92m'
-        WARNING = '\033[93m'
-        FAIL = '\033[91m'
-        ENDC = '\033[0m'
-        BOLD = '\033[1m'
-        UNDERLINE = '\033[4m'
     mytext = Bcolors.BOLD + Bcolors.OKGREEN + '''
 *****************************************************************************
 
