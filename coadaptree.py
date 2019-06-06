@@ -92,8 +92,8 @@ def askforinput():
                 print('exiting 00_start-gatk_pipeline.py')
                 exit()
             break
-            else:
-                print(Bcolors.FAIL + "Please respond with 'yes' or 'no'" + Bcolors.ENDC)
+        else:
+            print(Bcolors.FAIL + "Please respond with 'yes' or 'no'" + Bcolors.ENDC)
 
 
 class Bcolors:
