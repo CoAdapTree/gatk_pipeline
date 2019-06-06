@@ -5,16 +5,20 @@
 
 # purpose
 # concat all genotyped files for each pool into a vcf file if all files are ready
-# filter this vcf file for quality depth, fisher strand, mapping quality, \
-MQRankSum, MAF < 0.05, no less than 75% missing data
+# filter this vcf file for:
+# - quality depth < 2,
+# - fisher strand > 60,
+# - mapping quality < 40,
+# - MQRankSum < -12.5,
+# - MAF < 0.05,
+# - GQ < 20 for individual samps,
+# - no less than 75% missing data
 #
 
 # assumes
 # intervals files used to make scatter files in 04_scatter.py will sort properly
 # ie in order as they appear of the reference, which is important for concatenating vcfs
 #
-# GQ for samps should be filtered afterwards and then again for missing data after removing samps
-# if I used "--genotypeFilterExpression GQ < 20" I could miss SNPs that have > 75% of samps with GQ >=20
 """
 
 ### imports
@@ -81,16 +85,16 @@ for pool,files in combdict.items():
         tbi = filtout.replace(".gz",".gz.tbi")
         file = op.join(shdir,"%s-concat.sh" % pool)
         if op.exists(file) is False: # if sh file hasn't been made before
-            nomissing = filtout.replace(".vcf.gz", "_no-missing")
-            tablefile = nomissing + "_table.txt"
+            maxmissing = filtout.replace(".vcf.gz", "_max-missing")
+            tablefile = maxmissing + "_table.txt"
             ref = poolref[pool]
             files = ' '.join(sorted(files))
             text = f'''#!/bin/bash
 #SBATCH --time=11:59:59
 #SBATCH --mem=50000M
 #SBATCH --nodes=1
-#SBATCH --ntasks=32
-#SBATCH --cpus-per-task=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=32
 #SBATCH --job-name={pool}-concat
 #SBATCH --output={pool}-concat_%j.out 
 {email_info}
@@ -108,18 +112,19 @@ module load gatk/4.1.0.0
 echo -e "\nFILTERING VARIANTS"
 gatk IndexFeatureFile -F {catout}
 gatk VariantFiltration -R {ref} -V {catout} -O {filtout} --filter-expression \
-"QD < 2.0 || FS > 60.0 || MQ < 40.0 || MQRankSum < -12.5 || AF < 0.05 || AF > 0.95" \
+"QD < 2.0 || FS > 60.0 || MQ < 40.0 || MQRankSum < -12.5" \
 --filter-name "coadaptree_filter"
 module unload gatk
 
 module load vcftools/0.1.14
 echo -e "\nFILTERING MISSING DATA"
-vcftools --gzvcf {filtout} --max-missing 0.75 --recode --recode-INFO-all --out {nomissing}
+vcftools --gzvcf {filtout} --maf 0.05 --minGQ 20 --max-missing 0.75 --recode \
+--recode-INFO-all --out {maxmissing}
 module unload vcftools
 
 module load gatk/4.1.0.0
 echo -e "\nVARIANTS TO TABLE"
-gatk VariantsToTable --variant {nomissing}.recode.vcf -F CHROM -F POS -F REF -F ALT -F AF -F DP -F QD \
+gatk VariantsToTable --variant {maxmissing}.recode.vcf -F CHROM -F POS -F REF -F ALT -F AF -F DP -F QD \
 -F FS -F MQ -F MQRankSum -F ReadPosRankSum -GF AD -GF DP -GF GQ -GF GT -GF SB -O {tablefile}
 
 '''
