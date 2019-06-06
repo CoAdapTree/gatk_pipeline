@@ -1,6 +1,6 @@
 """
 # usage
-# python 04_concat_scaffolds.py /path/to/parentdir
+# python 06_filter_concat_scaffolds.py /path/to/parentdir
 # 
 
 # purpose
@@ -78,14 +78,16 @@ for pool,files in combdict.items():
         os.system(f'echo creating sbatch file for {pool}')
         catout = op.join(catdir, f"{pool}_concatenated_snps.vcf.gz")
         filtout = op.join(filtdir, f"{pool}_filtered_concatenated_snps.vcf.gz")
-        if not op.exists(filtout): # so I can run this when files begin to finish from 05_genotype.py
-            nomissing = filtout.replace(".vcf.gz", "_no-missing.vcf.gz")
-            tablefile = nomissing.replace(".vcf.gz", "_table.txt")
+        tbi = filtout.replace(".gz",".gz.tbi")
+        file = op.join(shdir,"%s-concat.sh" % pool)
+        if op.exists(file) is False: # if sh file hasn't been made before
+            nomissing = filtout.replace(".vcf.gz", "_no-missing")
+            tablefile = nomissing + "_table.txt"
             ref = poolref[pool]
             files = ' '.join(sorted(files))
             text = f'''#!/bin/bash
 #SBATCH --time=11:59:59
-#SBATCH --mem=15000M
+#SBATCH --mem=50000M
 #SBATCH --nodes=1
 #SBATCH --ntasks=32
 #SBATCH --cpus-per-task=1
@@ -94,7 +96,7 @@ for pool,files in combdict.items():
 {email_info}
 
 source $HOME/.bashrc
-export _JAVA_OPTIONS="-Xms256m -Xmx13g"
+export _JAVA_OPTIONS="-Xms256m -Xmx48g"
 echo $0
 
 module load bcftools/1.9
@@ -117,27 +119,25 @@ module unload vcftools
 
 module load gatk/4.1.0.0
 echo -e "\nVARIANTS TO TABLE"
-gatk VariantsToTable --variant {nomissing} -F CHROM -F POS -F REF -F ALT -F AF -F DP -F QD \
+gatk VariantsToTable --variant {nomissing}.recode.vcf -F CHROM -F POS -F REF -F ALT -F AF -F DP -F QD \
 -F FS -F MQ -F MQRankSum -F ReadPosRankSum -GF AD -GF DP -GF GQ -GF GT -GF SB -O {tablefile}
 
 '''
-            if not op.exists(filtout.replace(".gz",".gz.tbi")):
-                file = op.join(shdir,"%s-concat.sh" % pool)
-                with open(file,'w') as o:
-                    o.write("%s" % text)
-                shfiles.append(file)
-                # some times it's easier to just salloc some resources and run, instead of sbatching 
-                with open(file,'r') as o:
-                    text = o.read().split("\n")
-                lines = []
-                for line in text:
-                    if ('gatk' in line or 'bcftools' in line) and 'module' not in line:
-                        lines.append(line)
-                fcat = file.replace(".sh","_catfile.sh")
-                fcats.append(fcat)
-                with open(fcat,'w') as o:
-                    for line in lines:
-                        o.write("%s\n" % line)
+            with open(file,'w') as o:
+                o.write("%s" % text)
+            shfiles.append(file)
+            # some times it's easier to just salloc some resources and run, instead of sbatching 
+            with open(file,'r') as o:
+                text = o.read().split("\n")
+            lines = []
+            for line in text:
+                if ('gatk' in line or 'bcftools' in line) and 'module' not in line:
+                    lines.append(line)
+            fcat = file.replace(".sh","_catfile.sh")
+            fcats.append(fcat)
+            with open(fcat,'w') as o:
+                for line in lines:
+                    o.write("%s\n" % line)
 
 os.chdir(shdir)
 for sh in shfiles:
