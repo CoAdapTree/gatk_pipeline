@@ -34,7 +34,7 @@ def check_md5(src, md5files):
     """
     os.chdir(op.dirname(src))
     md5 = src + '.md5'
-    if md5 not in md5files and generate_md5 is True:
+    if md5 not in md5files and generate_md5 is True and 'md5' not in src:
         print(f'creating md5 for {op.basename(src)} ...')
         md5hash = subprocess.check_output([shutil.which('md5sum'),
                                            src]).decode('utf-8').split()[0]
@@ -61,6 +61,25 @@ newdirs = []  # keep track of directories to easily make on remote server
 cmds = []  # keep track of all scp commands
 # get hostname (eg beluga, cedar, graham)
 hostname = os.environ['CC_CLUSTER']
+
+
+# add remote and subdirs to newdirs list
+newdirs.append(remote)
+for p in pooldirs:
+    newdirs.append(op.join(remote, op.basename(p) + '-gatk'))
+
+
+# get pkl files
+pkls = [f for f in fs(parentdir) if f.endswith('.pkl')]
+for p in pooldirs:
+    for pkl in pkls:
+        pkldst = op.join(remote, f'{op.basename(p)}-gatk/{op.basename(pkl)}')
+        cmds.append(f"scp {hostname}:{pkl} {pkldst}")
+    newpkls = [f for f in fs(p) if f.endswith('.pkl')]
+    for newpkl in newpkls:
+        newdst = op.join(remote, f'{op.basename(p)}-gatk/{op.basename(newpkl)}')
+        cmds.append(f"scp {hostname}:{newpkl} {newdst}")
+
 
 # get shfiles
 for p in pooldirs:
