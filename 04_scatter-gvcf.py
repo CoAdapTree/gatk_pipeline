@@ -83,6 +83,10 @@ gatk HaplotypeCaller --sample-ploidy {ploidy} -R {ref} --genotyping-mode DISCOVE
 echo 'getting help from gvcf_helper'
 python $HOME/gatk_pipeline/gvcf_helper.py {pooldir} {tbi}
 
+# if finished running jobs, see if any can go on to the next stage (GenotypeGVCFs)
+echo 'looking for GenotypeGVCF jobs'
+python $HOME/gatk_pipeline/05_combine_and_genotype_supervised.py {parentdir}
+
 '''
     with open(filE, 'w') as o:
         o.write("%s" % text)
