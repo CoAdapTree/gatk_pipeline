@@ -87,7 +87,7 @@ def sbatchjobs(files):
 def main(DIR):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
-    x = len(getsq(grepping=['genotype']))
+    x = len(getsq())
     print ('queue length = ',x)
     if x < qthresh: # if there is room in the queue
         print('scheduler not running')

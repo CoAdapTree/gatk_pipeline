@@ -7,6 +7,7 @@ import sys
 import time
 import random
 from coadaptree import *
+from balance_queue import getsq
 ###
 
 ### args
@@ -21,7 +22,8 @@ print("scheddir=", scheddir)
 
 scheduler = op.join(scheddir, 'scheduler.txt')
 os.chdir(scheddir)
-qthresh = 1200
+cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
+qthresh = 1200 if cluster == 'cedar' else 900
 user = os.environ['USER']
 ###
 
@@ -107,7 +109,7 @@ def sbatchjobs(files):
 def main(scheddir):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
-    x = sq("squeue -u %s | grep scatter " % os.environ['USER']) # number of gvcf jobs in the queue
+    x = len(getsq())
     print ('queue length = ', x)
     if x < qthresh: # if there is room in the queue
         print('scheduler not running')
