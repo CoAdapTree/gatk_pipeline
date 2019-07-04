@@ -31,7 +31,8 @@ print("scheddir = ", scheddir)
 assert op.exists(scheddir)
 scheduler = op.join(scheddir, 'scheduler.txt')
 os.chdir(scheddir)
-qthresh = 500
+cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
+qthresh = 1200 if cluster == 'cedar' else 900
 user = os.environ['USER']
 ###
 
