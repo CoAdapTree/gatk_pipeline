@@ -1,10 +1,12 @@
-###
-# FIX: make more pythonic
-###
-
+"""
 ###
 # usage rescheduler.py /path/to/parentdir-used-in-00_start-pipeline.py/
 ###
+
+###
+# FIX: make more pythonic
+###
+"""
 
 ### imports
 import sys
@@ -21,21 +23,21 @@ if parentdir.endswith("/"):
     parentdir = parentdir[:-1]
 print('parentdir=',parentdir)
 #print dirname
-DIR = op.join(parentdir,'shfiles/supervised/select_variants_within_and_across') 
+DIR = op.join(parentdir, 'shfiles/supervised/select_variants') 
 #print DIR
 os.chdir(DIR)
 outs = [f for f in fs(DIR) if f.endswith('out') and 'checked' not in f and 'swp' not in f]
-rescheduler = op.join(DIR,'rescheduler.txt')
-samp2pool = pklload(op.join(parentdir,'samp2pool.pkl'))
+rescheduler = op.join(DIR, 'rescheduler.txt')
+samp2pool = pklload(op.join(parentdir, 'samp2pool.pkl'))
 
 
 def vcf2sh(v):
     pooldir  = op.dirname(op.dirname(v))
-    gvcfdir  = op.join(pooldir,'shfiles/gvcf_shfiles')
+    gvcfdir  = op.join(pooldir, 'shfiles/gvcf_shfiles')
     assert op.exists(gvcfdir)
     bname    = op.basename(v)
-    shname   = bname.replace("raw_","").replace(".g.vcf.gz",".sh")
-    shfile   = op.join(gvcfdir,shname)
+    shname   = bname.replace("raw_", "").replace(".g.vcf.gz", ".sh")
+    shfile   = op.join(gvcfdir, shname)
     return shfile
 
 
@@ -50,13 +52,13 @@ def unlink(linkname):
 
 def addlink(args):
     trushfile,linkname = args
-    print('symlink from: %s' % linkname)
-    print('to: %s' % trushfile)
+    print(f'symlink from: {linkname}')
+    print(f'to: {trushfile}')
     if not op.exists(linkname):
-        os.symlink(trushfile,linkname)
-        print('added symlink to queue: %s' % linkname)
+        os.symlink(trushfile, linkname)
+        print(f'added symlink to queue: {linkname}')
     else:
-        print('unable to create symlink from %s to %s' % (linkname,trushfile))
+        print(f'unable to create symlink from {linkname} to {trushfile}')
 
 
 def delrescheduler(rescheduler,createdrescheduler):
@@ -75,7 +77,7 @@ def getallpids():
     pids = [p for p in pids if not p == '']
     if len(pids) != len(set(pids)):
         print('len !- luni pids')
-        delrescheduler(rescheduler,globals()['createdrescheduler'])
+        delrescheduler(rescheduler, globals()['createdrescheduler'])
         exit()
     return pids[1:]
 
@@ -89,7 +91,7 @@ def removeworker(DIR,trushfile):
         try:
             os.unlink(worker)
         except:
-            os.system('echo could not unlink worker: %s' % worker)
+            os.system(f'echo could not unlink worker: {worker}')
 
 
 def getpids(sq):
@@ -103,27 +105,27 @@ def getpids(sq):
 
 def bigbrother(rescheduler):
     # if the scheduler controller has died, remove the scheduler
-    with open(rescheduler,'r') as o:
+    with open(rescheduler, 'r') as o:
         text = o.read()
     pid = text.split()[-1]
     if not pid == '=':
         pids = getallpids()
         if not pid in pids:
             print('controller was not running, so the scheduler was destroyed')
-            delrescheduler(rescheduler,True)
+            delrescheduler(rescheduler, True)
         else:
             print('controller is running, allowing it to proceed')
 
 
 def checktbis(shfile):
     # if some of the previous files were created, no need in wasting time recreating them
-    with open(shfile,'r') as s:
+    with open(shfile, 'r') as s:
         t = s.read().split("\n")
     for linenum,line in enumerate(t):
         if line.startswith('gatk') and 'IndexFeatureFile' not in line:
             vcf = [x for x in line.split() if x.endswith('.gz')][-1]
             if op.exists("%s.tbi" % vcf):
-                t[linenum] = line.replace("gatk","#gatk")
+                t[linenum] = line.replace("gatk", "#gatk")
                 print('changing')
                 print('\t%s' % line)
                 print('\t%s' % t[linenum])
@@ -132,12 +134,11 @@ def checktbis(shfile):
                 print('leaving downstream commands as-is (as-are?)')
                 break # no need to keep checking downstream files if upstream files have not been created
     text = '\n'.join(t)
-    with open(shfile,'w') as s:
+    with open(shfile, 'w') as s:
         s.write("%s" % text)
 
 
 # identify outs that aren't running
-# sq = getsq() # return [x for x in os.popen("squeue -u %s -t RUNNING" % os.environ['USER']).read().split("\n") if not x == '']
 sq = getsq(states=['running'])
 #print(sq)
 pids = getpids(sq)
@@ -298,28 +299,28 @@ if len(outs) > 0:
                             with open(trushfile) as trush:
                                 sh = trush.read()
                             if '=4000M' in sh:
-                                text = sh.replace('=4000M','=12000M')
-                                text = sh.replace("-Xmx3g","-Xmx10g")
+                                text = sh.replace('=4000M', '=12000M')
+                                text = sh.replace("-Xmx3g", "-Xmx10g")
                                 os.system('echo increasing mem to 12G')
                             elif '=12000M' in sh:
-                                text = sh.replace('=12000M','=20000M')
-                                text = sh.replace("-Xmx10g","-Xmx18g")
+                                text = sh.replace('=12000M', '=20000M')
+                                text = sh.replace("-Xmx10g", "-Xmx18g")
                                 os.system('echo increasing mem to 20G')
                             elif '=20000M' in sh:
-                                text = sh.replace('=20000M','=30000M')
-                                text = sh.replace("-Xmx18g","-Xmx28g")
+                                text = sh.replace('=20000M', '=30000M')
+                                text = sh.replace("-Xmx18g", "-Xmx28g")
                                 os.system('echo increasing mem to 30G')
                             elif '=30000M' in sh:
-                                text = sh.replace('=30000M','=50000M')
-                                text = sh.replace("-Xmx28g","-Xmx48g")
+                                text = sh.replace('=30000M', '=50000M')
+                                text = sh.replace("-Xmx28g", "-Xmx48g")
                                 os.system('echo increasing mem to 50G')
                             elif '=50000M' in sh:
-                                text = sh.replace('=50000M','=120000M')
-                                text = sh.replace("-Xmx48g","-Xmx118g")
+                                text = sh.replace('=50000M', '=120000M')
+                                text = sh.replace("-Xmx48g", "-Xmx118g")
                                 os.system('echo increasing mem to 120G')
                             elif '=120000M' in sh:
-                                text = sh.replace('=120000M','=200000M')
-                                text = sh.replace("-Xmx118g","-Xmx198g")
+                                text = sh.replace('=120000M', '=200000M')
+                                text = sh.replace("-Xmx118g", "-Xmx198g")
                                 os.system('echo increasing mem to 200G')
                             with open(trushfile,'w') as o:
                                 o.write("%s" % text)

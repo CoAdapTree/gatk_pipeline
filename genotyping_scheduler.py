@@ -1,3 +1,4 @@
+"""
 ###
 # usage: python genotyping_scheduler.py /path/to/<parentdir>/
 ###
@@ -5,6 +6,7 @@
 ###
 # fix: merge with scheduler.py
 ###
+"""
 
 ### imports
 import os
@@ -24,12 +26,12 @@ thisfile, parentdir = sys.argv
 ### reqs
 if parentdir.endswith("/"): #sometimes I run the scheduler from the command line, which appends / which screws up op.dirname()
     parentdir = parentdir[:-1]
-scheddir  = op.join(parentdir,'shfiles/supervised/select_variants_within_and_across')
-print("scheddir = ",scheddir)
+scheddir  = op.join(parentdir, 'shfiles/supervised/select_variants')
+print("scheddir = ", scheddir)
 assert op.exists(scheddir)
-scheduler = op.join(scheddir,'scheduler.txt')
+scheduler = op.join(scheddir, 'scheduler.txt')
 os.chdir(scheddir)
-qthresh   = 5
+qthresh = 500
 user = os.environ['USER']
 ###
 
@@ -41,14 +43,19 @@ def delsched(scheduler):
         os.remove(scheduler)
     except:
         pass
+
+
 def getpids():
-    pids = os.popen(f'squeue -u {os.environ["USER"]} -o "%i"').read().split("\n")
+    USER = os.environ["USER"]
+    pids = os.popen(f'squeue -u {USER} -o "%i"').read().split("\n")
     pids = [p for p in pids if not p == '']
     if len(pids) != luni(pids):
         print('len !- luni pids')
         delsched(scheduler)
         exit()
     return pids[1:]
+
+
 def startscheduler(scheduler):
     with open(scheduler,'w') as o:
         # after creating the file, write job id in case i want to cancel process
@@ -61,6 +68,8 @@ def startscheduler(scheduler):
         if not text.split()[-1] == jobid:
             os.system('echo another scheduler is in conflict. Allowing other scheduler to proceed. Exiting')
             exit()
+
+
 def sbatchjobs(files):
     for f in files:
         realp = op.realpath(f) # find the file to which the symlink file is linked
@@ -73,6 +82,8 @@ def sbatchjobs(files):
                 print('unable to unlink symlink %f' % f)
                 continue
             os.system('sbatch %s' % realp) # then sbatch the real sh file if & only if the symlink was successfully unlinked    
+
+
 def main(DIR):
     # write a file and reserve scheduling to this call of the scheduler, or pass if another scheduler is running
     startscheduler(scheduler) # reserve right away
@@ -96,6 +107,8 @@ def main(DIR):
     pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n","")
     os.system('python %s geno' % (op.join(pipedir,'balance_queue.py')))
     delsched(scheduler)
+
+
 def bigbrother(scheduler,DIR):
     # if the scheduler controller has died, remove the scheduler
     with open(scheduler,'r') as o:
