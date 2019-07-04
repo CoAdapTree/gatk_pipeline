@@ -59,6 +59,7 @@ print('len(snpfiles) = ',len(snpfiles))
 alreadycreated = [f for f in fs(shdir) if f.endswith('.sh') and 'swp' not in f]
 print('len(alreadycreated) = ', len(alreadycreated))
 newfiles = Counter()
+shfiles = []
 for pool,files in finished.items():
     thresh = len(poolsamps[pool])
     # get the files that need to be combined
