@@ -3,8 +3,8 @@
 # python 04_scatter-gvcf.py dupfile pooldir ref samp
 ###
 
-###
-# note that you will need to change the location of the -L interval files (idir) or (pdir)
+### purpose
+# use intervals.list files (created outside of the pipeline) to parallelize HaplotypeCaller calls
 ###
 """
 
