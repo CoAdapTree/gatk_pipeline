@@ -96,10 +96,11 @@ module load fastp/0.19.5
     newtext = ''''''
     for r1, r2 in pairs:
         r1adaptor, r2adaptor = list(adaptors[samp].values())
-        if not r1adaptor == '':
+        if r1adaptor == r1adaptor:
+            # if not nan
             adaptorflag = '--adapter_sequence %(r1adaptor)s --adapter_sequence_r2 %(r2adaptor)s' % locals()
         else:
-            # adaptors were not specified
+            # adaptors were not specified, r1adaptor is nan
             adaptorflag = ''
         r1out = op.join(trimDIR, op.basename(r1).split(".fastq")[0] + "_trimmed.fastq.gz")
         r2out = op.join(trimDIR, op.basename(r2).split(".fastq")[0] + "_trimmed.fastq.gz")
