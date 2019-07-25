@@ -87,6 +87,7 @@ for pool,files in combdict.items():
         if op.exists(file) is False: # if sh file hasn't been made before
             maxmissing = filtout.replace(".vcf.gz", "_max-missing")
             tablefile = maxmissing + "_table.txt"
+            tablefile_filtered = tablefile.replace(".txt", "_biallelic-only.txt")
             ref = poolref[pool]
             files = ' '.join(sorted(files))
             text = f'''#!/bin/bash
@@ -125,7 +126,12 @@ module unload vcftools
 module load gatk/4.1.0.0
 echo -e "\nVARIANTS TO TABLE"
 gatk VariantsToTable --variant {maxmissing}.recode.vcf -F CHROM -F POS -F REF -F ALT -F AF -F DP -F QD \
--F FS -F MQ -F MQRankSum -F ReadPosRankSum -GF AD -GF DP -GF GQ -GF GT -GF SB -O {tablefile}
+-F FS -F MQ -F MQRankSum -F ReadPosRankSum -GF AD -GF DP -GF GQ -GF GT -GF SB -O {tablefile} --split-multi-allelic
+module unload gatk
+
+echo -e "\nREMOVING MULTIALLELIC, KEEPING noREF SNPs WITH TWO ALT ALLELES
+cd $HOME/gatk_pipeline
+python remove_multiallelic-keep_noREF.py {tablefile} {tablefile_filtered} 
 
 '''
             with open(file,'w') as o:
