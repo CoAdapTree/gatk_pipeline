@@ -89,7 +89,7 @@ echo GENOTYPING GVCFs
 gatk GenotypeGVCFs -R {ref} -V {combfile} -O {gfile} 
 
 echo SELECTING VARIANTS
-gatk SelectVariants -R {ref} -V {gfile} --select-type-to-include SNP --restrict-alleles-to BIALLELIC -O {snpfile}
+gatk SelectVariants -R {ref} -V {gfile} --select-type-to-include SNP -O {snpfile}
 
 '''
         else:
