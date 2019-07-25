@@ -13,7 +13,7 @@
 ---
 ## Assumed environment
 1. Access to an HPC with a scheduler (e.g., slurm, SGE, PBS, TORQUE) - this pipeline assumes slurm
-1. Ability to install an anaconda (not miniconda) or virtual environment with python 3.7 (eg: `conda create -n py3 python=3.7` or `virtualenv --no-download ~/py3`)
+1. Ability to install virtual environment with python 3.7 (e.g., virtualenv --no-download ~/py3`)
     1. source env within `$HOME/.bashrc` on the last line of the file (eg `source ~/anaconda3/bin/activate py3` for conda, or `source ~/py3/bin/activate` for virutalenv)
 1. Ability to load the following modules via:
     1. `module load bwa/0.7.17`
