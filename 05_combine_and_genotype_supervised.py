@@ -57,7 +57,7 @@ newfiles = Counter()
 shfiles = []
 for pool,files in finished.items():
     thresh = len(poolsamps[pool])
-    # get the files that need to be combined
+    # get the files that need to be combined across samples (by interval/scaff)
     groups = {}
     for f in files:
         scaff = op.basename(f).split("scatter")[1].split(".g.v")[0]
@@ -76,6 +76,7 @@ for pool,files in finished.items():
             # if the number of gvcf.tbi files created match the number of samps (expected number):
             if thresh > 1:
                 # if we need to combine across samps:
+                varcmd = '--variant ' + ' --variant '.join([x for x in sorted(sfiles)])
                 combinestep = f'''echo COMBINING GVCFs
 gatk CombineGVCFs -R {ref} {varcmd} -O {combfile}
 '''
