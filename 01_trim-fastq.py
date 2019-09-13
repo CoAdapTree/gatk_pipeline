@@ -109,7 +109,7 @@ module load fastp/0.19.5
         logfile = r1out.replace("R1", "").replace(".fastq.gz", "_R1_R2_stats.log")
         samp2_r1r2out[samp].append((r1out, r2out))
 
-        text = '''fastp -i %(r1)s -o %(r1out)s -I %(r2)s -O %(r2out)s --disable_quality_filtering \
+        text = '''fastp -i %(r1)s -o %(r1out)s -I %(r2)s -O %(r2out)s \
 -g --cut_window_size 5 --cut_mean_quality 30 --n_base_limit 20 --length_required 75 \
 -h %(html)s.html --cut_by_quality3 --thread 16 --json %(json)s.json \
 %(adaptorflag)s > %(logfile)s
