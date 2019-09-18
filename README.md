@@ -21,7 +21,7 @@
     1. `module load picard/2.18.9`
     1. `module load gatk/4.1.0.0`
     1. `module load bcftools/1.9`
-1. copy the following into your `$HOME/.bashrc` file so that the `def-someuser` reflects your non-RAC compute canada account
+1. copy the following into your `$HOME/.bashrc` file so that the `def-someuser` reflects your non-RAC compute canada account. If you have multiple accounts available, the pipeline will balance load among them (you choose these accounts during 00_start execution). The following is needed to submit jobs before the pipeline balances load.
     ```
     export SLURM_ACCOUNT=def-someuser
     export SBATCH_ACCOUNT=$SLURM_ACCOUNT
