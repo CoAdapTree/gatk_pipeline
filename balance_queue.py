@@ -240,7 +240,7 @@ def get_avail_accounts(parentdir=None, save=False):
         if os.path.exists(pkl):
             return pklload(pkl)
 
-    # get a list of all available accounts    
+    # get a list of all available accounts
     acctout = subprocess.check_output([shutil.which('sshare'),
                                        '-U',
                                        '--user',
