@@ -9,12 +9,9 @@
 """
 
 ### imports
-import os
-import sys
+import os, sys, time, random, balance_queue
 from os import path as op
 from os import listdir
-import time
-import random
 from coadaptree import *
 from balance_queue import getsq
 ###
@@ -105,8 +102,7 @@ def main(DIR):
             print('no files to sbatch')
     else:
         print('genotyping_scheduler was not running, but no room in queue' )
-    pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n","")
-    os.system('python %s geno' % (op.join(pipedir,'balance_queue.py')))
+    os.system('python $HOME/gatk_pipeline/balance_queue.py geno %s' % parentdir)
     delsched(scheduler)
 
 

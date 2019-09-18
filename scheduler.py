@@ -3,9 +3,8 @@
 ###
 
 ### imports
-import sys
-import time
-import random
+import os, sys, time, random, balance_queue
+from os import path as op
 from coadaptree import *
 from balance_queue import getsq
 ###
@@ -129,8 +128,7 @@ def main(scheddir):
             print('no files to sbatch')
     else:
         print('scheduler was not running, but no room in queue' )
-    pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n", "")
-    os.system('python %s scatter' % (op.join(pipedir, 'balance_queue.py')))
+    balance_queue.main('balance_queue.py', 'scatter', parentdir)
     delsched(scheduler)
 
 

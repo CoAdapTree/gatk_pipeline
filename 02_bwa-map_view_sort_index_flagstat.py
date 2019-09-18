@@ -124,5 +124,5 @@ os.chdir(bwashdir)
 print('shdir = ', shdir)
 subprocess.call([shutil.which('sbatch'), qsubfile])
 
-balance_queue.main('balance_queue.py', 'bwa')
-balance_queue.main('balance_queue.py', 'trim')
+balance_queue.main('balance_queue.py', 'bwa', parentdir)
+balance_queue.main('balance_queue.py', 'trim', parentdir)

@@ -10,7 +10,7 @@
 """
 
 ### imports
-import sys
+import sys, balance_queue
 from collections import Counter
 from coadaptree import *
 ### 
@@ -162,3 +162,5 @@ os.system(f'python $HOME/gatk_pipeline/genotyping_scheduler.py {parentdir}')
 
 print(shdir, len( fs(shdir) ) )
 
+# balance queue
+balance_queue.main('balance_queue.py', 'genotype', parentdir)

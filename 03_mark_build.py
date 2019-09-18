@@ -73,5 +73,5 @@ print('shdir = ', shdir)
 subprocess.call([shutil.which('sbatch'), file])
 
 # balance queue
-balance_queue.main('balance_queue.py', 'mark')
-balance_queue.main('balance_queue.py', 'bwa')
+balance_queue.main('balance_queue.py', 'mark', parentdir)
+balance_queue.main('balance_queue.py', 'bwa', parentdir)

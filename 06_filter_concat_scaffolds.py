@@ -22,11 +22,8 @@
 """
 
 ### imports
-import sys
-import os
+import sys, os, pickle, balance_queue
 from os import path as op
-from os import listdir
-import pickle
 import numpy as np
 from coadaptree import fs, createdirs, pklload, get_email_info
 ### 
@@ -59,7 +56,7 @@ for i,snp in enumerate(snpfiles):
         if p in op.basename(snp):
             pool = p
             break
-    if not pool in combdict:
+    if pool not in combdict:
         combdict[pool] = []
     combdict[pool].append(snp)
     del pool  # will cause script to error if pool isn't found in snpfile
@@ -158,3 +155,7 @@ for sh in shfiles:
 print('here are the fcats:')
 for f in fcats:
     print(f)
+    
+# balance queue
+balance_queue.main('balance_queue.py', 'genotype', parentdir)
+balance_queue.main('balance_queue.py', 'concat', parentdir)
