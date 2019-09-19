@@ -19,18 +19,43 @@
     1. `module load picard/2.18.9`
     1. `module load gatk/4.1.0.0`
     1. `module load bcftools/1.9`
-1. In the `parentdir` scratch folder that contains the fastq files, copy the following into a file called `bash_variables`. The `def-someuser` reflects your compute canada account that you would like to use to submit jobs. If you have multiple accounts available, the pipeline will balance load among them (you choose these accounts during 00_start execution). The following is needed to submit jobs before the pipeline balances load.
+1. In the `parentdir` folder that contains the fastq files, copy the following into a file called `bash_variables`. The `def-someuser` reflects your compute canada account that you would like to use to submit jobs. If you have multiple accounts available, the pipeline will balance load among them (you choose these accounts during 00_start execution). The following is needed to submit jobs before the pipeline balances load. See example file in GitHub repository.
     ```
     export SLURM_ACCOUNT=def-someuser
     export SBATCH_ACCOUNT=$SLURM_ACCOUNT
     export SALLOC_ACCOUNT=$SLURM_ACCOUNT
     export PYTHONPATH="${PYTHONPATH}:$HOME/gatk_pipeline"
-    export SQUEUE_FORMAT="%.8i %.8u %.12a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
+    export SQUEUE_FORMAT="%.8i %.8u %.15a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
     # placeholder for python environment activation (see below)
     ```
 1. Ability to install virtual environment with python 3.7 (e.g., virtualenv --no-download ~/py3`)
     1. Add the appropriate activation command to the `bash_variables` file (eg `source ~/anaconda3/bin/activate py3` for conda, or `source ~/py3/bin/activate` for virutalenv)
-1. clone the pipeline repo's master branch to the server and create a symlink in `$HOME` so that it can be accessed via `$HOME/gatk_pipeline`
+1. The reference fasta file should be uncompressed (eg. ref.fa not ref.fa.gz), and the following commands should be executed before starting pipeline:
+    1. `bwa index ref.fa`
+    1. `samtools faidx ref.fa`
+1. This pipeline assumes that the user will want to parallelize elements of the HaplotypeCaller and GenotypeGVCFs stages by using interval files (interval.list files). For example, chromosomes are often parallelized for this stage; ultimately the degree of parallelization (i.e., the number of interval.list files) is up to the user. The following is assumed about these files:
+    1. They are located within a directory called 'intervals' in the same folder as the ref.fa
+    1. The interval filenames are of the form 'batch_uniqueID.list'.
+        1. uniqueID can be any string as long as there are no hyphens or underscores (eg batch_0013.list, batch_chrXIII.list
+    1. The contents of the .list files should have at least one entry (eg the chromosome name found in the ref.fa file) or a list of chromosomes/scaffolds/intervals with or without start-stop positions.
+        `batch_chrXI.list`
+        ```
+        chrXI
+        ```
+        
+        `batch_0001.list`
+        ```
+        Scaffold_0001
+        ```
+        
+        `batch_0013.list`
+        ```
+        Scaffold_1693:1-122845
+        Scaffold_1693:123446-409462
+        Scaffold_1693:410063-584146
+        ...
+        ```
+1. Clone the pipeline repo's master branch to the server and create a symlink in `$HOME` so that it can be accessed via `$HOME/gatk_pipeline`
 
 
 ## Using the pipeline
@@ -44,7 +69,7 @@
 	- RG info, file paths, etc should of course be different between sequenced files of single samps
 - Once the environment is set up, put `datatable.txt` and the fastq files (symlinks work too) into a folder. This is the folder I call `PARENTDIR`.
 
-- To kick off the pipeline, source your bashrc (`source ~/.bashrc`) to activate the python env, export the path to the pipeline `export PYTHONPATH="${PYTHONPATH}:$HOME/gatk_pipeline"`, and run `00_start-gatk_pipeline.py` from the home node, and it will run the rest of the preprocessing pipeline automatically by serially sbatching jobs (through `05_combine_and_genotype_supervised.py`).
+- To kick off the pipeline, source your `bash_variables` file in `parentdir` (`source bash_variables`) to activate the python env, export the pythonpath to the pipeline and other slurm variables. Then run `00_start-gatk_pipeline.py` from the home node, and it will run the rest of the preprocessing pipeline automatically by serially sbatching jobs (through `05_combine_and_genotype_supervised.py`).
 
 `(py3) [user@host ~]$ python $HOME/gatk_pipeline/00_start-gatk_pipeline.py -p PARENTDIR [-e EMAIL [-n EMAIL_OPTIONS]] [-h]`
 ```
@@ -55,8 +80,13 @@ optional arguments:
                         the type(s) of email notifications you would like to
                         receive from the pipeline. Requires --email-address.
                         These options are used to fill out the #SBATCH flags.
-                        must be one (or multiple) of ['all', 'none', 'fail',
-                        'begin', 'end']
+                        must be one (or multiple) of ['all', 'fail', 'begin',
+                        'end', 'pipeline-finish'] (default: None)
+  -maf MAF              At the end of the pipeline, VCF files will be filtered
+                        for MAF. If the pipeline is run on a single
+                        population/pool, the user can set MAF to 0.0 so as to
+                        filter variants based on global allele frequency
+                        across populations/pools at a later time. (default: 0.05)
   -h, --help            Show this help message and exit.
 
 required arguments:

@@ -29,7 +29,8 @@ def create_sh(pooldirs, poolref, parentdir):
                          pooldir,
                          ref])
     print("\n")
-    balance_queue.main('balance_queue.py', 'trim', parentdir)
+    balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+    subprocess.call([sys.executable, balance_queue, 'trim', parentdir])
 
 
 def get_datafiles(parentdir, f2pool, data):
@@ -157,13 +158,16 @@ please create these files' +
             intdir = op.join(op.dirname(ref), 'intervals')
             if not op.exists(intdir):
                 printneeded = True
-            elif len([f for f in fs(intdir) if '.list' in f]) == 0:
+            elif len([f for f in fs(intdir) if '.list' in f and 'batch_' in f]) == 0:
                 printneeded = True
             if printneeded is True:
                 print(Bcolors.FAIL + 
-                      'FAIL: either the intervals dir doesn not exist or there are not interval.list files\
-\nFAIL: intdir should be here: %s' % intdir +
-                      Bcolors.ENDC)
+                      'FAIL: either the intervals dir doesn not exist or there are not batch_interval.list files\
+\nFAIL: intdir should be here: %s\
+\nFAIL: interval filenames should be of the form "batch_uniqueIDENTIFIER.list"\
+\nFAIL:      these files must begin with "batch" followed by one underscore followed\
+\nFAIL:      by "uniqueIDENTIFIER" which can be any string that does not include\
+\nFAIL:      an underscore (eg chrXIII or 0013 for batch_0013.list).' % intdir + Bcolors.ENDC)
                 exit()
             poolref[pool] = ref
         rginfo[samp] = {}
@@ -197,20 +201,25 @@ def check_reqs(parentdir):
     # check to see if bash_variables file has been created
     if not op.exists(op.join(parentdir, 'bash_variables')):
         print('\tCould not find bash_variables file in parentdir. Please create this file and add \
-in variables from README (eg SLURM_ACCOUNT, SQUEUE_FORMAT, etc).')
+in variables from README (eg SLURM_ACCOUNT, SQUEUE_FORMAT, etc). See example in $HOME/gatk-pipeline.')
     else:
         with open(op.join(parentdir, 'bash_variables')) as bv:
             text = bv.read().split("\n")
         needed = []
         for var in variables:
+            found = False
             for line in text:
-                if not var in line:
-                    needed.append(var)
-        if len(var) > 0:
+                if var in line:
+                    found = True
+                    break
+            if found is False:
+                needed.append(var)
+        if len(needed) > 0:
             print(Bcolors.FAIL + '\tFAIL: not all bash variables were found in parentdir/bash_variables file.' + Bcolors.ENDC)
             print(Bcolors.FAIL + '\tFAIL: the following variables must be present' + Bcolors.ENDC)
             for var in needed:
                 print(Bcolors.FAIL + '\t%s' % var + Bcolors.ENDC)
+            print('exiting pipeline')
     
     # check to see if bash_variables file has been sourced
     for var in variables:
@@ -274,6 +283,11 @@ def get_pars():
                         help='''the type(s) of email notifications you would like to receive from the pipeline.\
                         Requires --email-address. These options are used to fill out the #SBATCH flags.
 must be one (or multiple) of %s''' % [x for x in choices])
+    parser.add_argument("-maf",
+                        required=False,
+                        default='0.05',
+                        dest="maf",
+                        help='''At the end of the pipeline, VCF files will be filtered for MAF. If the pipeline is run on a single population/pool, the user can set MAF to 0.0 so as to filter variants based on global allele frequency across populations/pools at a later time.''')
     parser.add_argument('-h', '--help',
                         action='help',
                         default=argparse.SUPPRESS,
@@ -310,6 +324,8 @@ please check input\n' + Bcolors.ENDC)
         epkl = {'email': args.email,
                 'opts': args.email_options}
         pkldump(epkl, op.join(args.parentdir, 'email_opts.pkl'))
+
+    pkldump(args.maf, op.join(args.parentdir, 'maf.pkl'))
 
     return args
 

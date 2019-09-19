@@ -9,7 +9,7 @@
 """
 
 ### imports
-import os, sys, time, random, balance_queue
+import os, sys, time, random, subprocess
 from os import path as op
 from os import listdir
 from coadaptree import *
@@ -102,7 +102,8 @@ def main(DIR):
             print('no files to sbatch')
     else:
         print('genotyping_scheduler was not running, but no room in queue' )
-    os.system('python $HOME/gatk_pipeline/balance_queue.py geno %s' % parentdir)
+    balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+    subprocess.call([sys.executable, balance_queue, 'geno', parentdir])
     delsched(scheduler)
 
 

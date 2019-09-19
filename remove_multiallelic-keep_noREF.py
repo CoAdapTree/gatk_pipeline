@@ -1,6 +1,6 @@
 """
 Remove multiallic SNPs, keep SNPs where REF isn't present in samps but SNP has two ALT alleles,
-discard any biallelic SNPs with REF=N.
+discard any biallelic SNPs with REF=N and one ALT.
 This uses pandas chunks so that large tablefiles can be passed to script.
 
 ### usage
@@ -44,7 +44,7 @@ def get_chunks(tablefile):
     return chunks, basename
 
 
-def adjust_freqs(smalldf):
+def adjust_freqs(smalldf, alts):
     """
     For loci with REF not present, set ALT freqs with respect to the second ALT allele.
     
@@ -135,7 +135,7 @@ def get_noref_snps(tablefile):
                         break
                 # if it seems to be a true multiallelic site and one of the ALTs is not *
                 if keep is True and '*' not in alts:
-                    newsmalldf = adjust_freqs(smalldf.copy(), ref, alts)
+                    newsmalldf = adjust_freqs(smalldf.copy(), alts)
                     dfs.append(pd.DataFrame(newsmalldf.loc[0,:]).T)
     print(f"\tfound {len(dfs)} SNPs where REF is not an allele in samps: {tf}")
     return dfs

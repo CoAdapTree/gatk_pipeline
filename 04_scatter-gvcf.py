@@ -21,6 +21,7 @@ print ('pooldir =', pooldir)
 parentdir = op.dirname(pooldir)
 pool = op.basename(pooldir) 
 ref = pklload(op.join(parentdir, 'poolref.pkl'))[pool]
+bash_variables = op.join(parentdir, 'bash_variables')
 
 # create dirs
 shdir = op.join(pooldir, 'shfiles')
@@ -65,9 +66,7 @@ for scaff in scaffiles:
 cat $0 
 echo {filE}
 
-source $HOME/.bashrc
-export PYTHONPATH="${{PYTHONPATH}}:$HOME/gatk_pipeline"
-export SQUEUE_FORMAT="%.8i %.8u %.12a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
+source {bash_variables}
 
 # resubmit jobs with errors
 python $HOME/gatk_pipeline/rescheduler.py {pooldir}
@@ -96,4 +95,5 @@ python $HOME/gatk_pipeline/05_combine_and_genotype_supervised.py {parentdir}
         os.symlink(filE, dst)
 
 # submit to scheduler
-os.system('python $HOME/gatk_pipeline/scheduler.py %s' % pooldir)
+scheduler = op.join(os.environ['HOME'], 'gatk_pipeline/scheduler.py')
+subprocess.call([sys.executable, scheduler, pooldir])

@@ -10,7 +10,7 @@
 """
 
 ### imports
-import sys, balance_queue
+import sys, subprocess
 from collections import Counter
 from coadaptree import *
 ### 
@@ -25,6 +25,7 @@ if parentdir.endswith("/"):
 poolref = pklload(op.join(parentdir, 'poolref.pkl'))  #key=pool val=/path/to/ref.fa
 poolsamps = pklload(op.join(parentdir, 'poolsamps.pkl'))
 pools = uni(list(poolsamps.keys()))
+bash_variables = op.join(parentdir, 'bash_variables')
 ###
 
 # get a list of subdirectory pool dirs created earlier in pipeline
@@ -112,9 +113,7 @@ gatk SelectVariants -R {ref} -V {gfile} --select-type-to-include SNP -O {snpfile
 
 export _JAVA_OPTIONS="-Xms256m -Xmx3g"
 
-source $HOME/.bashrc
-export PYTHONPATH="${{PYTHONPATH}}:$HOME/gatk_pipeline"
-export SQUEUE_FORMAT="%.8i %.8u %.12a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
+source {bash_variables}
 
 cat $0
 # next line necessary for rescheduler
@@ -163,4 +162,5 @@ os.system(f'python $HOME/gatk_pipeline/genotyping_scheduler.py {parentdir}')
 print(shdir, len( fs(shdir) ) )
 
 # balance queue
-balance_queue.main('balance_queue.py', 'genotype', parentdir)
+balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+subprocess.call([sys.executable, balance_queue, 'genotype', parentdir])

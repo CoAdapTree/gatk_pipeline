@@ -22,7 +22,7 @@
 """
 
 ### imports
-import sys, os, pickle, balance_queue
+import sys, os, pickle
 from os import path as op
 import numpy as np
 from coadaptree import fs, createdirs, pklload, get_email_info
@@ -34,6 +34,8 @@ if parentdir.endswith("/"):
     parentdir = parentdir[:-1]
 poolref = pklload(op.join(parentdir, 'poolref.pkl'))
 email_info = get_email_info(parentdir, 'concat')
+bash_variables = op.join(parentdir, 'bash_variables')
+maf = pklload(op.join(parentdir, 'maf.pkl'))
 ###
 
 ### dirs
@@ -97,7 +99,7 @@ for pool,files in combdict.items():
 #SBATCH --output={pool}-concat_%j.out 
 {email_info}
 
-source $HOME/.bashrc
+source {bash_variables}
 export _JAVA_OPTIONS="-Xms256m -Xmx48g"
 echo $0
 
@@ -116,7 +118,7 @@ module unload gatk
 
 module load vcftools/0.1.14
 echo -e "\nFILTERING MISSING DATA"
-vcftools --gzvcf {filtout} --maf 0.05 --minGQ 20 --max-missing 0.75 --recode \
+vcftools --gzvcf {filtout} --maf {maf} --minGQ 20 --max-missing 0.75 --recode \
 --recode-INFO-all --out {maxmissing}
 module unload vcftools
 
@@ -127,8 +129,7 @@ gatk VariantsToTable --variant {maxmissing}.recode.vcf -F CHROM -F POS -F REF -F
 module unload gatk
 
 echo -e "\nREMOVING MULTIALLELIC, KEEPING noREF SNPs WITH TWO ALT ALLELES
-cd $HOME/gatk_pipeline
-python remove_multiallelic-keep_noREF.py {tablefile} {tablefile_filtered} 
+python $HOME/gatk_pipeline/remove_multiallelic-keep_noREF.py {tablefile} {tablefile_filtered} 
 
 '''
             with open(file,'w') as o:
@@ -157,5 +158,6 @@ for f in fcats:
     print(f)
     
 # balance queue
-balance_queue.main('balance_queue.py', 'genotype', parentdir)
-balance_queue.main('balance_queue.py', 'concat', parentdir)
+balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+subprocess.call([sys.executable, balance_queue, 'genotype', parentdir])
+subprocess.call([sys.executable, balance_queue, 'concat', parentdir])

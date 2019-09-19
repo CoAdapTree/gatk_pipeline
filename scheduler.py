@@ -3,7 +3,7 @@
 ###
 
 ### imports
-import os, sys, time, random, balance_queue
+import os, sys, time, random, subprocess
 from os import path as op
 from coadaptree import *
 from balance_queue import getsq
@@ -16,13 +16,14 @@ thisfile, pooldir = sys.argv
 ### reqs
 if pooldir.endswith("/"): #sometimes I run the scheduler from the command line, which appends / which screws up op.dirname()
     pooldir = pooldir[:-1]
-scheddir = op.join(op.dirname(pooldir), 'shfiles/gvcf_shfiles')
+parentdir = op.dirname(pooldir)
+scheddir = op.join(parentdir, 'shfiles/gvcf_shfiles')
 print("scheddir=", scheddir)
 
 scheduler = op.join(scheddir, 'scheduler.txt')
 os.chdir(scheddir)
 cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
-qthresh = 1200 if cluster == 'cedar' else 900
+qthresh = 900 if cluster == 'cedar' else 900
 user = os.environ['USER']
 ###
 
@@ -128,7 +129,8 @@ def main(scheddir):
             print('no files to sbatch')
     else:
         print('scheduler was not running, but no room in queue' )
-    balance_queue.main('balance_queue.py', 'scatter', parentdir)
+    balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+    subprocess.call([sys.executable, balance_queue, 'scatter', parentdir])
     delsched(scheduler)
 
 

@@ -25,6 +25,10 @@ Distribute priority jobs among accounts.
 #    python balance_queue.py keyword choose
 # as run in pipeline when balancing trim jobs from 01_trim.py:
 #    python balance_queue.py trim /path/to/parentdir
+#
+# because of possible exit() commands in balance_queue, this should be run 
+#    as a main program, or as a subprocess when run inside another python 
+#    script.
 ###
 
 ### assumes
@@ -35,7 +39,7 @@ Distribute priority jobs among accounts.
 import os, shutil, sys, math, subprocess, time
 from random import shuffle
 from collections import Counter
-from coadaptree import Bcolors, pklload
+from coadaptree import Bcolors, pklload, pkldump
 
 
 def announceacctlens(accounts, fin):
@@ -260,7 +264,7 @@ def get_avail_accounts(parentdir=None, save=False):
     if save is True:
         # called from 00_start.py
         keep = choose_accounts(accts)
-        pkldump(keep, op.join(parentdir, 'accounts.pkl'))
+        pkldump(keep, os.path.join(parentdir, 'accounts.pkl'))
         # no return necessary for 00_start.py
         return
     

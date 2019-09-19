@@ -13,11 +13,13 @@
 ###
 """
 
-import sys, os, balance_queue, subprocess, shutil
+import sys, os, subprocess, shutil
 from os import path as op
 from coadaptree import makedir, get_email_info, pklload
 
 thisfile, pooldir, samp = sys.argv
+parentdir = op.dirname(pooldir)
+bash_variables = op.join(parentdir, 'bash_variables')
 sortfiles = pklload(op.join(pooldir, '%s_sortfiles.pkl' % samp))
 
 # MarkDuplicates
@@ -51,9 +53,7 @@ samtools flagstat {dupfile} > {dupflag}
 module unload samtools
 
 # call next step
-source $HOME/.bashrc
-export PYTHONPATH="${{PYTHONPATH}}:$HOME/gatk_pipeline"
-export SQUEUE_FORMAT="%.8i %.8u %.12a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
+source {bash_variables}
 
 python $HOME/gatk_pipeline/04_scatter-gvcf.py {dupfile} {pooldir} {samp}
 
@@ -73,5 +73,6 @@ print('shdir = ', shdir)
 subprocess.call([shutil.which('sbatch'), file])
 
 # balance queue
-balance_queue.main('balance_queue.py', 'mark', parentdir)
-balance_queue.main('balance_queue.py', 'bwa', parentdir)
+balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+subprocess.call([sys.executable, balance_queue, 'mark', parentdir])
+subprocess.call([sys.executable, balance_queue, 'bwa', parentdir])

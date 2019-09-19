@@ -13,7 +13,7 @@
 """
 
 ### imports
-import sys, shutil, signal, balance_queue
+import sys, shutil, signal, subprocess
 from random import shuffle
 from coadaptree import *
 ###
@@ -25,7 +25,8 @@ if parentdir.endswith("/"):
 ###
 
 # balance the queue
-balance_queue.main('balance_queue.py', 'genotype', parentdir)
+balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+subprocess.call([sys.executable, balance_queue, 'genotype', parentdir])
 
 # make sure the previous outfile was created
 def checkoutfile(outfile):
