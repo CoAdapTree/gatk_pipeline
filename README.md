@@ -13,20 +13,23 @@
 ---
 ## Assumed environment
 1. Access to an HPC with a scheduler (e.g., slurm, SGE, PBS, TORQUE) - this pipeline assumes slurm
-1. Ability to install virtual environment with python 3.7 (e.g., virtualenv --no-download ~/py3`)
-    1. source env within `$HOME/.bashrc` on the last line of the file (eg `source ~/anaconda3/bin/activate py3` for conda, or `source ~/py3/bin/activate` for virutalenv)
 1. Ability to load the following modules via:
     1. `module load bwa/0.7.17`
     1. `module load samtools/1.9`
     1. `module load picard/2.18.9`
     1. `module load gatk/4.1.0.0`
     1. `module load bcftools/1.9`
-1. copy the following into your `$HOME/.bashrc` file so that the `def-someuser` reflects your non-RAC compute canada account. If you have multiple accounts available, the pipeline will balance load among them (you choose these accounts during 00_start execution). The following is needed to submit jobs before the pipeline balances load.
+1. In the `parentdir` scratch folder that contains the fastq files, copy the following into a file called `bash_variables`. The `def-someuser` reflects your compute canada account that you would like to use to submit jobs. If you have multiple accounts available, the pipeline will balance load among them (you choose these accounts during 00_start execution). The following is needed to submit jobs before the pipeline balances load.
     ```
     export SLURM_ACCOUNT=def-someuser
     export SBATCH_ACCOUNT=$SLURM_ACCOUNT
     export SALLOC_ACCOUNT=$SLURM_ACCOUNT
+    export PYTHONPATH="${PYTHONPATH}:$HOME/gatk_pipeline"
+    export SQUEUE_FORMAT="%.8i %.8u %.12a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
+    # placeholder for python environment activation (see below)
     ```
+1. Ability to install virtual environment with python 3.7 (e.g., virtualenv --no-download ~/py3`)
+    1. Add the appropriate activation command to the `bash_variables` file (eg `source ~/anaconda3/bin/activate py3` for conda, or `source ~/py3/bin/activate` for virutalenv)
 1. clone the pipeline repo's master branch to the server and create a symlink in `$HOME` so that it can be accessed via `$HOME/gatk_pipeline`
 
 
