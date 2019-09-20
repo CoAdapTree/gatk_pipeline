@@ -10,7 +10,7 @@
 """
 
 ### imports
-import sys, subprocess
+import sys, subprocess, os
 from collections import Counter
 from coadaptree import *
 ### 
@@ -157,7 +157,8 @@ for sh in shfiles:
         print('could not create symlink')
         
 # # submit to scheduler, balance accounts
-os.system(f'python $HOME/gatk_pipeline/genotyping_scheduler.py {parentdir}')
+genotyping_scheduler = os.path.join(os.environ['HOME'], 'gatk_pipeline/genotyping_scheduler.py')
+subprocess.call([sys.executable, genotyping_scheduler, parentdir])
 
 print(shdir, len( fs(shdir) ) )
 

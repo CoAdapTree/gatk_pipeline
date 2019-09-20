@@ -36,8 +36,9 @@
 1. This pipeline assumes that the user will want to parallelize elements of the HaplotypeCaller and GenotypeGVCFs stages by using interval files (interval.list files). For example, chromosomes are often parallelized for this stage; ultimately the degree of parallelization (i.e., the number of interval.list files) is up to the user. The following is assumed about these files:
     1. They are located within a directory called 'intervals' in the same folder as the ref.fa
     1. The interval filenames are of the form 'batch_uniqueID.list'.
-        1. uniqueID can be any string as long as there are no hyphens or underscores (eg batch_0013.list, batch_chrXIII.list
-    1. The contents of the .list files should have at least one entry (eg the chromosome name found in the ref.fa file) or a list of chromosomes/scaffolds/intervals with or without start-stop positions.
+        1. uniqueID can be any string as long as there are no hyphens or underscores (eg batch_0013.list, batch_chrXIII.list)
+    1. The contents of the .list files should have at least one entry (eg the chromosome name found in the ref.fa file) or a list of chromosomes/scaffolds/intervals with or without start-stop positions. There should not be a blank line at the end of the .list file, this will cause an error.
+    
         `batch_chrXI.list`
         ```
         chrXI
