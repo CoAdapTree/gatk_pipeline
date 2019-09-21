@@ -137,7 +137,22 @@ def checktbis(shfile):
     with open(shfile, 'w') as s:
         s.write("%s" % text)
 
-
+def handle_cancelled(o):
+    # no need to change time this first time
+    os.system('echo leaving orginal time as-is')
+    os.system('echo cancelled =%s' % cancelled)
+    for line in o[::-1]:
+        if line.startswith('reading') or line.startswith('shfile ='):
+            trushfile = [x for x in line.split() if x.endswith('.sh')][0]
+            os.system ('echo checking tbis of original sh file %s' % trushfile)
+            checktbis(trushfile)
+            # add job back to the queue 
+            linkname = op.join(DIR,op.basename(trushfile))
+            addlink((trushfile,linkname))
+            # remove worker from workingdir
+            removeworker(DIR,trushfile)
+            break
+        
 # identify outs that aren't running
 sq = getsq(states=['running'])
 #print(sq)
@@ -217,20 +232,7 @@ if len(outs) > 0:
                             os.system('echo helped by genotyping_helper =%s' % helped)
                             break
                     if helped is True: # if the job ended on a call from gvcf_helper.py or was cancelled
-                        # no need to change time this first time
-                        os.system('echo leaving orginal time as-is')
-                        os.system('echo cancelled =%s' % cancelled)
-                        for line in o[::-1]:
-                            if line.startswith('reading') or line.startswith('shfile ='):
-                                trushfile = [x for x in line.split() if x.endswith('.sh')][0]
-                                os.system ('echo checking tbis of original sh file %s' % trushfile)
-                                checktbis(trushfile)
-                                # add job back to the queue 
-                                linkname = op.join(DIR,op.basename(trushfile))
-                                addlink((trushfile,linkname))
-                                # remove worker from workingdir
-                                removeworker(DIR,trushfile)
-                                break  
+                        handle_cancelled(o)
                     else:
                         for line in o:
                             # this was the call from the original sh file, need to change time
@@ -270,20 +272,7 @@ if len(outs) > 0:
                                 addlink((trushfile,linkname))
                                 break
                 elif cancelled is True:
-                    # no need to change time this first time
-                    os.system('echo leaving orginal time as-is')
-                    os.system('echo cancelled =%s' % cancelled)
-                    for line in o[::-1]:
-                        if line.startswith('reading') or line.startswith('shfile ='):
-                            trushfile = [x for x in line.split() if x.endswith('.sh')][0]
-                            os.system ('echo checking tbis of original sh file %s' % trushfile)
-                            checktbis(trushfile)
-                            # add job back to the queue 
-                            linkname = op.join(DIR,op.basename(trushfile))
-                            addlink((trushfile,linkname))
-                            # remove worker from workingdir
-                            removeworker(DIR,trushfile)
-                            break  
+                    handle_cancelled(o)
                 else: # there's a mem oerror
                     edited = True
                     # at t=0, all sh files have mem==8000M, so if gvcf_helper.py caused mem error, the last call needs more mem

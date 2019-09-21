@@ -28,6 +28,10 @@
     export SQUEUE_FORMAT="%.8i %.8u %.15a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
     # placeholder for python environment activation (see below)
     ```
+    1. The following is assumed regarding the name of slurm accounts found by `sshare -U --user $USER --format=Account`:
+        1. The total character length of the account name is less than 15 - the full slurm account name will need to appear in the ACCOUNT column output from `squeue -u $USER` (using exported `SQUEUE_FORMAT` above); if not, increase the digits in `SQUEUE_FORMAT` from `%0.15a` to eg `%0.20a`.
+        1. The characters in the account name that come before an underscore are sufficient to distinguish unique accounts - if the account name does not have an underscore then this is fine.
+        1. The accounts that the user would like to use end in `_cpu` (as opposed to eg `_gpu`). The pipeline will skip over non-`_cpu` accounts.
 1. Ability to install virtual environment with python 3.7 (e.g., virtualenv --no-download ~/py3`)
     1. Add the appropriate activation command to the `bash_variables` file (eg `source ~/anaconda3/bin/activate py3` for conda, or `source ~/py3/bin/activate` for virutalenv)
 1. The reference fasta file should be uncompressed (eg. ref.fa not ref.fa.gz), and the following commands should be executed before starting pipeline:
@@ -72,8 +76,11 @@
 
 - To kick off the pipeline, source your `bash_variables` file in `parentdir` (`source bash_variables`) to activate the python env, export the pythonpath to the pipeline and other slurm variables. Then run `00_start-gatk_pipeline.py` from the home node, and it will run the rest of the preprocessing pipeline automatically by serially sbatching jobs (through `05_combine_and_genotype_supervised.py`).
 
-`(py3) [user@host ~]$ python $HOME/gatk_pipeline/00_start-gatk_pipeline.py -p PARENTDIR [-e EMAIL [-n EMAIL_OPTIONS]] [-h]`
+`(py3) [user@host ~]$ python $HOME/gatk_pipeline/00_start-gatk_pipeline.py -p PARENTDIR [-e EMAIL [-n EMAIL_OPTIONS]] [-maf INT] [-h]`
 ```
+required arguments:
+  -p PARENTDIR          /path/to/directory/with/fastq.gz-files/
+
 optional arguments:
   -e EMAIL              the email address you would like to have notifications
                         sent to (default: None)
@@ -89,9 +96,6 @@ optional arguments:
                         filter variants based on global allele frequency
                         across populations/pools at a later time. (default: 0.05)
   -h, --help            Show this help message and exit.
-
-required arguments:
-  -p PARENTDIR          /path/to/directory/with/fastq.gz-files/
 ```
 
 

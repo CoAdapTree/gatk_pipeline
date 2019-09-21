@@ -49,8 +49,7 @@ def getpids():
     pids = [p for p in pids if not p == '']
     if len(pids) != luni(pids):
         print('len !- luni pids')
-        delsched(scheduler)
-        exit()
+        return 'exitneeded'
     return pids[1:]
 
 
@@ -107,19 +106,28 @@ def main(DIR):
     delsched(scheduler)
 
 
-def bigbrother(scheduler,DIR):
+def bigbrother(scheduler, DIR=None):
     # if the scheduler controller has died, remove the scheduler
-    with open(scheduler,'r') as o:
+    with open(scheduler, 'r') as o:
         text = o.read()
     pid = text.split()[-1]
     if not pid == '=':
         pids = getpids()
-        if not pid in pids:
+        if pids == 'exitneeded':
+            delsched(scheduler)
+            exit()
+        if pid not in pids:
             print('controller was not running, so the scheduler was destroyed')
             delsched(scheduler)
-            main(DIR)
+            if DIR is not None:
+                # will skip when calling from *scheduler.py
+                main(DIR)  # since job wasn't running, just try to run with this job
+            else:
+                # in 05_scheduler, this allows it to proceed with scheduling
+                return
         else:
             print('controller is running, allowing it to proceed')
+            exit()
 ###
 
 # main

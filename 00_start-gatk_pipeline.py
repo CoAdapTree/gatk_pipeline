@@ -231,7 +231,7 @@ so it can be used later in gatk_pipeline, then source this file before restartin
             print('\texiting 00_start-gatk_pipeline.py')
             exit()
 
-    # make sure an environment can be activated (activation assumed to be in $HOME/.bashrc)
+    # make sure an environment can be activated (activation assumed to be in parentdir/bash_variables)
     for exe in ['activate']:
         if distutils.spawn.find_executable(exe) is None:
             print(Bcolors.FAIL + '\tcould not find %s in $PATH\nexiting 00_start-gatk_pipeline.py' % exe
@@ -337,7 +337,7 @@ def main():
     # WARN if version = 3.6, FAIL if < 3.6
     check_pyversion()
 
-    # look for exported vars (should be in .bashrc)
+    # look for exported vars (should be in /parentdir/bash_variables)
     check_reqs(args.parentdir)
     
     # determine which slurm accounts to use

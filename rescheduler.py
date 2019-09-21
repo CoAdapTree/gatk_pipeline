@@ -86,7 +86,7 @@ def removeworker(scheddir,trushfile):
 def getpids(sq):
     pids = []
     if len(sq) > 0:
-        print('getpids len(sq) > 0')
+#         print('getpids len(sq) > 0')
         pids = []
         for q in sq:
             if not q == '':
@@ -111,6 +111,23 @@ def bigbrother(rescheduler):
         else:
             os.system('echo controller is running, allowing it to proceed')
 
+
+def handle_cancelled(o):
+    # no need to change time this first time
+    os.system('echo leaving orginal time as-is')
+    os.system('echo cancelled =%s' % cancelled)
+    for line in o[::-1]:
+        if line.startswith('gatk HaplotypeCaller'):
+            vcf = line.split()[-5]
+            trushfile = vcf2sh(vcf)
+            linkname = op.join(scheddir, op.basename(trushfile))
+
+            # add job back to the queue 
+            addlink((trushfile, linkname))
+
+            # remove worker from workingdir
+            removeworker(scheddir,trushfile)
+            break
 
 # identify outs that aren't running
 createdrescheduler = False
@@ -192,22 +209,7 @@ if len(outs) > 0:
                             os.system('echo helped by gvcf_helper =%s' % helped)
                             break
                     if helped is True or cancelled is True: # if the job ended on a call from gvcf_helper.py or was cancelled
-                        # no need to change time this first time
-                        os.system('echo leaving orginal time as-is')
-                        os.system('echo cancelled =%s' % cancelled)
-                        for line in o[::-1]:
-                            if line.startswith('gatk HaplotypeCaller'):
-                                vcf = line.split()[-5]
-                                trushfile = vcf2sh(vcf)
-                                linkname = op.join(scheddir, op.basename(trushfile))
-                                
-                                # add job back to the queue 
-                                addlink((trushfile, linkname))
-                                
-                                # remove worker from workingdir
-                                removeworker(scheddir,trushfile)
-                                
-                                break
+                        handle_cancelled(o)
                     else:
                         for line in o[::-1]:
                             # this was the call from the original sh file
@@ -247,6 +249,8 @@ if len(outs) > 0:
                                 addlink((trushfile, linkname))
                                 
                                 break
+                elif cancelled is True:
+                    handle_cancelled(o)
                 else: # there's a mem oerror
                     edited = True
                     # at t=0, all sh files have mem==8000M, so if gvcf_helper.py caused mem error, the last call needs more mem

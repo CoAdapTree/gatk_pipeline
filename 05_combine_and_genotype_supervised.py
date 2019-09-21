@@ -1,18 +1,21 @@
 """
 ### usage
 # python 03a_combine_and_genotype_by_pool.py parentdir
-###
-
-### fix
-# create reservation file to streamline pipeline
-# auto tune scheduler thresh to server
+#
+# if manually running from outside the pipeline, user must first:
+#    export SLURM_JOB_ID=1234  # this bashvariable is used by code
+# if run manually without exporting SLURM_JOB_ID, there will be 
+#    an error. Before rerunning 05.py, user must delete:
+#        /parentdir/shfiles/supervised/select_variants/scheduler.txt
 ###
 """
 
 ### imports
 import sys, subprocess, os
+from os import path as op
 from collections import Counter
 from coadaptree import *
+from genotyping_scheduler import startscheduler, bigbrother, delsched
 ### 
 
 ### args
@@ -20,6 +23,14 @@ thisfile, parentdir = sys.argv
 if parentdir.endswith("/"):
     parentdir = parentdir[:-1]
 ###
+
+# make a reservation file so other jobs don't call 05.py
+resfile = op.join(parentdir, 'shfiles/05_reservation.txt')
+if not op.exists(resfile):
+    startscheduler(resfile)
+else:
+    print('05.py was running')
+    bigbrother(resfile, DIR=None)
 
 ### reqs
 poolref = pklload(op.join(parentdir, 'poolref.pkl'))  #key=pool val=/path/to/ref.fa
@@ -57,6 +68,7 @@ print('len(alreadycreated) = ', len(alreadycreated))
 newfiles = Counter()
 shfiles = []
 for pool,files in finished.items():
+    ref = poolref[pool]
     thresh = len(poolsamps[pool])
     # get the files that need to be combined across samples (by interval/scaff)
     groups = {}
@@ -71,7 +83,7 @@ for pool,files in finished.items():
         gfile = combfile.replace("_combined.vcf.gz", "_genotyped.vcf.gz")
         snpfile = gfile.replace("_genotyped.vcf.gz", "_snps.vcf.gz")
         if snpfile in snpfiles:
-            # if the snpfile has already been made, move on to the next
+            # if the snpfile.tbi has already been made, move on to the next
             continue
         if len(sfiles) == thresh:
             # if the number of gvcf.tbi files created match the number of samps (expected number):
@@ -161,7 +173,4 @@ genotyping_scheduler = os.path.join(os.environ['HOME'], 'gatk_pipeline/genotypin
 subprocess.call([sys.executable, genotyping_scheduler, parentdir])
 
 print(shdir, len( fs(shdir) ) )
-
-# balance queue
-balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
-subprocess.call([sys.executable, balance_queue, 'genotype', parentdir])
+delsched(resfile)
