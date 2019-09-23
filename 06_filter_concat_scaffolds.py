@@ -22,7 +22,7 @@
 """
 
 ### imports
-import sys, os, pickle
+import sys, os, pickle, subprocess
 from os import path as op
 import numpy as np
 from coadaptree import fs, createdirs, pklload, get_email_info
@@ -128,7 +128,7 @@ gatk VariantsToTable --variant {maxmissing}.recode.vcf -F CHROM -F POS -F REF -F
 -F FS -F MQ -F MQRankSum -F ReadPosRankSum -GF AD -GF DP -GF GQ -GF GT -GF SB -O {tablefile} --split-multi-allelic
 module unload gatk
 
-echo -e "\nREMOVING MULTIALLELIC, KEEPING noREF SNPs WITH TWO ALT ALLELES
+echo -e "\nREMOVING MULTIALLELIC, KEEPING noREF SNPs WITH TWO ALT ALLELES"
 python $HOME/gatk_pipeline/remove_multiallelic-keep_noREF.py {tablefile} {tablefile_filtered} 
 
 '''

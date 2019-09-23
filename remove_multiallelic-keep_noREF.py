@@ -179,4 +179,4 @@ def main(tablefile, outfile):
 if __name__ == '__main__':
     thisfile, tablefile, outfile = sys.argv
 
-    main(tablefile)
+    main(tablefile, outfile)
