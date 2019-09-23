@@ -125,4 +125,4 @@ subprocess.call([shutil.which('sbatch'), qsubfile])
 
 balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
 subprocess.call([sys.executable, balance_queue, 'bwa', parentdir])
-subprocess.call([balance_queue, 'trim', parentdir])
+subprocess.call([sys.executable, balance_queue, 'trim', parentdir])
