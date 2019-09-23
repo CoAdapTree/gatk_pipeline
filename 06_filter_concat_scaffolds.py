@@ -77,9 +77,11 @@ for pool,ref in poolref.items():
 shfiles = []
 fcats   = []
 for pool,files in combdict.items():
+    ref = poolref[pool]
     if len(files) == expected[pool]:
         os.system(f'echo creating sbatch file for {pool}')
-        catout = op.join(catdir, f"{pool}_concatenated_snps.vcf.gz")
+        catout = op.join(catdir, f"{pool}_concatenated.vcf.gz")
+        snpsout = op.join(catdir, f"{pool}_concatenated_snps.vcf.gz")
         filtout = op.join(filtdir, f"{pool}_filtered_concatenated_snps.vcf.gz")
         tbi = filtout.replace(".gz",".gz.tbi")
         file = op.join(shdir,"%s-concat.sh" % pool)
@@ -111,7 +113,8 @@ module unload bcftools
 module load gatk/4.1.0.0
 echo -e "\nFILTERING VARIANTS"
 gatk IndexFeatureFile -F {catout}
-gatk VariantFiltration -R {ref} -V {catout} -O {filtout} --filter-expression \
+gatk SelectVariants -R {ref} -V {catout} --select-type-to-include SNP -O {snpsout}
+gatk VariantFiltration -R {ref} -V {snpsout} -O {filtout} --filter-expression \
 "QD < 2.0 || FS > 60.0 || MQ < 40.0 || MQRankSum < -12.5" \
 --filter-name "coadaptree_filter"
 module unload gatk
@@ -125,7 +128,7 @@ module unload vcftools
 module load gatk/4.1.0.0
 echo -e "\nVARIANTS TO TABLE"
 gatk VariantsToTable --variant {maxmissing}.recode.vcf -F CHROM -F POS -F REF -F ALT -F AF -F DP -F QD \
--F FS -F MQ -F MQRankSum -F ReadPosRankSum -GF AD -GF DP -GF GQ -GF GT -GF SB -O {tablefile} --split-multi-allelic
+-F FS -F MQ -F MQRankSum -F ReadPosRankSum -F TYPE -F FILTER -GF AD -GF DP -GF GQ -GF GT -GF SB -O {tablefile} --split-multi-allelic
 module unload gatk
 
 echo -e "\nREMOVING MULTIALLELIC, KEEPING noREF SNPs WITH TWO ALT ALLELES"

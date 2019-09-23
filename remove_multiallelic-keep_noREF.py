@@ -56,9 +56,9 @@ def adjust_freqs(smalldf, alts):
     """
 
     alt1, alt2 = alts
-    df.loc[0, 'ALT'] = f"{alt1}+{alt2}"
-    df.loc[0, 'AF'] = smalldf.loc[1, 'AF']
-    return df 
+    smalldf.loc[0, 'AF'] = smalldf.loc[1, 'AF']
+    smalldf.loc[0, 'ALT'] = f"{alt1}+{alt2}"
+    return smalldf 
 
 
 def rm_multiallelic(tablefile):
@@ -73,6 +73,7 @@ def rm_multiallelic(tablefile):
     df - pandas.dataframe; non-multiallelic-filtered VariantsToTable output
     """
     print(f'removing multiallelic sites from {tablefile}')
+    tf = op.basename(tablefile)
     chunks, basename = get_chunks(tablefile)
     
     dfs = []
@@ -137,6 +138,7 @@ def get_noref_snps(tablefile):
                 if keep is True and '*' not in alts:
                     newsmalldf = adjust_freqs(smalldf.copy(), alts)
                     dfs.append(pd.DataFrame(newsmalldf.loc[0,:]).T)
+    tf = op.basename(tablefile)
     print(f"\tfound {len(dfs)} SNPs where REF is not an allele in samps: {tf}")
     return dfs
 
