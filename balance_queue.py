@@ -3,14 +3,14 @@ Distribute priority jobs among accounts.
 
 ###
 # purpose: evenly redistributes jobs across available slurm accounts. Jobs are
-#          found via the slurm job name (phaseOFpipeline);
+#          found via searching for the keyword among the squeue output fields;
 #          Helps speed up effective run time by spreading out load.
 ###
 
 ###
 # usage: python balance_queue.py [keyword] [parentdir]
 #
-# keyword is used to search specific job names in queue
+# keyword is used to search across column data in queue
 # parentdir is used to either find a previously saved list of accounts
 #    or is set to 'choose' so the user can run from command line
 #    and manually choose which accounts are used
@@ -24,6 +24,7 @@ Distribute priority jobs among accounts.
 #    python balance_queue.py $USER choose
 #    python balance_queue.py keyword choose
 # as run in pipeline when balancing trim jobs from 01_trim.py:
+#    this looks for accounts.pkl in parentdir to determine accounts saved in 00_start.py
 #    python balance_queue.py trim /path/to/parentdir
 #
 # because of possible exit() commands in balance_queue, this should be run 
@@ -32,7 +33,7 @@ Distribute priority jobs among accounts.
 ###
 
 ### assumes
-# export SQUEUE_FORMAT="%.8i %.8u %.12a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
+# export SQUEUE_FORMAT="%.8i %.8u %.15a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
 ###
 """
 
@@ -323,8 +324,8 @@ def redistribute_jobs(accts, user_accts, balance):
         print('\t%s has taken %s jobs' % (taker, count))
         
 
-def main(thisfile, phase, parentdir):
-    globals().update({'thisfile': thisfile, 'phase': phase})
+def main(thisfile, keyword, parentdir):
+    globals().update({'thisfile': thisfile, 'keyword': keyword})
 
     print(Bcolors.BOLD + '\nStarting balance_queue.py' + Bcolors.ENDC)
     # get accounts available for billing
@@ -337,7 +338,7 @@ def main(thisfile, phase, parentdir):
         exit()
 
     # get priority jobs from the queue
-    sq = getsq(grepping=[phase, 'Priority'], balancing=True)
+    sq = getsq(grepping=[keyword, 'Priority'], balancing=True)
 
     # get per-account lists of jobs in Priority pending status, exit if all accounts have low priority
     accts = getaccounts(sq, '', user_accts)
@@ -350,7 +351,7 @@ def main(thisfile, phase, parentdir):
     redistribute_jobs(accts, user_accts, balance)
 
     # announce final job counts
-    announceacctlens(getaccounts(getsq(grepping=[phase, 'Priority'], balancing=True),
+    announceacctlens(getaccounts(getsq(grepping=[keyword, 'Priority'], balancing=True),
                                  'final',
                                  user_accts),
                      True)
@@ -361,13 +362,13 @@ if __name__ == '__main__':
     if len(sys.argv) == 1:
         # so I can run from command line and balance full queue
         thisfile = sys.argv[0]
-        phase = os.environ['USER']
+        keyword = os.environ['USER']
         parentdir = None
     elif len(sys.argv) == 2:
         # so I can run from command line without a parentdir
-        thisfile, phase = sys.argv
+        thisfile, keyword = sys.argv
         parentdir = None
     else:
-        thisfile, phase, parentdir = sys.argv
+        thisfile, keyword, parentdir = sys.argv
 
-    main(thisfile, phase, parentdir)
+    main(thisfile, keyword, parentdir)
