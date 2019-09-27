@@ -27,8 +27,8 @@ Distribute priority jobs among accounts.
 #    this looks for accounts.pkl in parentdir to determine accounts saved in 00_start.py
 #    python balance_queue.py trim /path/to/parentdir
 #
-# because of possible exit() commands in balance_queue, this should be run 
-#    as a main program, or as a subprocess when run inside another python 
+# because of possible exit() commands in balance_queue, this should be run
+#    as a main program, or as a subprocess when run inside another python
 #    script.
 ###
 
@@ -346,7 +346,7 @@ def main(thisfile, keyword, parentdir):
 
     # determine number of jobs to redistribute to each account
     balance = getbalance(accts, len(user_accts))
-    
+
     # redistribute
     redistribute_jobs(accts, user_accts, balance)
 
