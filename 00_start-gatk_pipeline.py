@@ -8,6 +8,10 @@
 # (the second file with samp as key will overwrite the last)
 # as of now, that hasn't created an issue
 ###
+
+### TODO
+# assert 0 <= input maf <= 1
+###
 """
 
 import os, sys, distutils.spawn, subprocess, shutil, argparse, pandas as pd
