@@ -10,7 +10,7 @@
 # - fisher strand > 60,
 # - mapping quality < 40,
 # - MQRankSum < -12.5,
-# - MAF < 0.05,
+# - MAF < 0.05 (default - user can define when starting pipeline with 00_start)
 # - GQ < 20 for individual samps,
 # - no less than 75% missing data
 #
