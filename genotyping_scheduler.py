@@ -16,22 +16,6 @@ from coadaptree import *
 from balance_queue import getsq
 ###
 
-### args
-thisfile, parentdir = sys.argv
-###
-
-### reqs
-if parentdir.endswith("/"): #sometimes I run the scheduler from the command line, which appends / which screws up op.dirname()
-    parentdir = parentdir[:-1]
-scheddir  = op.join(parentdir, 'shfiles/supervised/select_variants')
-print("scheddir = ", scheddir)
-assert op.exists(scheddir)
-scheduler = op.join(scheddir, 'scheduler.txt')
-os.chdir(scheddir)
-cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
-qthresh = 1200 if cluster == 'cedar' else 900
-user = os.environ['USER']
-###
 
 ### defs
 print('running scheduler.py')
@@ -123,7 +107,7 @@ def bigbrother(scheduler, DIR=None):
                 # will skip when calling from *scheduler.py
                 main(DIR)  # since job wasn't running, just try to run with this job
             else:
-                # in 05_scheduler, this allows it to proceed with scheduling
+                # in 05_scheduler and 06_filter, this allows it to proceed with scheduling
                 return
         else:
             print('controller is running, allowing it to proceed')
@@ -131,9 +115,27 @@ def bigbrother(scheduler, DIR=None):
 ###
 
 # main
-time.sleep(random.random())  # just in case the very first instances of scheduler.py start at v similar times
-if not op.exists(scheduler): # if scheduler isn't running
-    main(scheddir)
-else:
-    print('scheduler was running')
-    bigbrother(scheduler,scheddir)
+if __name__ == '__main__':
+    ### args
+    thisfile, parentdir = sys.argv
+    ###
+
+    ### reqs
+    if parentdir.endswith("/"): #sometimes I run the scheduler from the command line, which appends / which screws up op.dirname()
+        parentdir = parentdir[:-1]
+    scheddir  = op.join(parentdir, 'shfiles/supervised/select_variants')
+    print("scheddir = ", scheddir)
+    assert op.exists(scheddir)
+    scheduler = op.join(scheddir, 'scheduler.txt')
+    os.chdir(scheddir)
+    cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
+    qthresh = 150 if cluster == 'cedar' else 150
+    user = os.environ['USER']
+    ###
+    
+    time.sleep(random.random())  # just in case the very first instances of scheduler.py start at v similar times
+    if not op.exists(scheduler): # if scheduler isn't running
+        main(scheddir)
+    else:
+        print('scheduler was running')
+        bigbrother(scheduler,scheddir)
