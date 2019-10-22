@@ -34,7 +34,7 @@ thisfile, parentdir = sys.argv
 if parentdir.endswith("/"):
     parentdir = parentdir[:-1]
 poolref = pklload(op.join(parentdir, 'poolref.pkl'))
-email_info = get_email_info(parentdir, 'concat')
+email_info = get_email_info(parentdir, 'final')
 bash_variables = op.join(parentdir, 'bash_variables')
 maf = pklload(op.join(parentdir, 'maf.pkl'))
 ###
