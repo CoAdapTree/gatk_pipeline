@@ -142,6 +142,7 @@ module load gatk/4.1.0.0
 {cmds}
 
 # keep running jobs until time runs out
+source {bash_variables}
 echo getting help from genotyping_helper
 # python $HOME/gatk_pipeline/genotyping_helper.py {parentdir} {snpfile}
 
