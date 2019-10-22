@@ -140,6 +140,7 @@ python $HOME/gatk_pipeline/genotyping_scheduler.py {parentdir}
 # genotype current file
 module load gatk/4.1.0.0
 {cmds}
+module unload gatk
 
 # keep running jobs until time runs out
 source {bash_variables}
