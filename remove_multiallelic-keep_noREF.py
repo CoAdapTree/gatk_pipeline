@@ -61,6 +61,16 @@ def adjust_freqs(smalldf, alts):
     return smalldf 
 
 
+def keep_goodloci(chunk):
+    # count SNPs, if count > 1 then it's a SNP with multiple ALT alleles
+    loccount = table(chunk['locus'])
+    # identify loci with exactly one ALT allele
+    goodloci = [locus for locus in loccount if loccount[locus] == 1]
+    # filter chunk for multiallelic (multiple lines), REF != N
+    chunk = chunk[chunk['locus'].isin(goodloci)].copy()
+    chunk = chunk[chunk['REF'] != 'N'].copy()
+    return chunk.copy()
+
 def rm_multiallelic(tablefile):
     """
     Count CHROM-POS (locus) and keep only those with one ALT, discard if REF=N.
@@ -80,17 +90,12 @@ def rm_multiallelic(tablefile):
     for chunk in chunks:
         # give SNPs IDs by CHROM+POS
         chunk['locus'] = ["%s-%s" % (chrom,pos) for (chrom,pos) in zip(chunk["CHROM"], chunk["POS"])]
-        # count SNPs, if count > 1 then it's a SNP with multiple ALT alleles
-        loccount = table(chunk['locus'])
-        # identify loci with exactly one ALT allele
-        goodloci = [locus for locus in loccount if loccount[locus] == 1]
-        # filter chunk for multiallelic (multiple lines), REF != N
-        chunk = chunk[chunk['locus'].isin(goodloci)].copy()
-        chunk = chunk[chunk['REF'] != 'N'].copy()
+        chunk = keep_goodloci(chunk.copy())
         # keep whatever is leftover after filtering
         dfs.append(chunk)
     # combine filtered chunks
     df = pd.concat(dfs)
+    df = keep_goodloci(df.copy())  # in case multiallelic sites were split between chunks
     print(f'\t{tf} has {len(df.index)} good SNPs (non-multiallelic)')
     return df
 
