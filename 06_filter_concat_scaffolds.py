@@ -26,6 +26,7 @@ import sys, os, pickle, subprocess
 from os import path as op
 import numpy as np
 from coadaptree import fs, createdirs, pklload, get_email_info
+from genotyping_scheduler import startscheduler, bigbrother, delsched
 ### 
 
 ### args
@@ -37,6 +38,14 @@ email_info = get_email_info(parentdir, 'concat')
 bash_variables = op.join(parentdir, 'bash_variables')
 maf = pklload(op.join(parentdir, 'maf.pkl'))
 ###
+
+# make a reservation file so other jobs don't call 05.py
+resfile = op.join(parentdir, 'shfiles/06_reservation.txt')
+if not op.exists(resfile):
+    startscheduler(resfile)
+else:
+    print('06.py was running')
+    bigbrother(resfile, DIR=None)
 
 ### dirs
 shdir   = op.join(parentdir, 'shfiles/concat')
