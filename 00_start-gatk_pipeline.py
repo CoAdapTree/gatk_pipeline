@@ -248,7 +248,6 @@ so it can be used later in gatk_pipeline, then source this file before restartin
     if not op.exists(op.join(os.environ['HOME'], 'gatk_pipeline')):
         print('\tcould not find gatk_pipeline via $HOME/gatk_pipeline\n\texiting 00_start-gatk_pipeline.py')
         exit()
-    print('DONE!\n')
 
 
 def check_pyversion():
