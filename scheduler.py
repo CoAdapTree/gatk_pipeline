@@ -3,7 +3,7 @@
 ###
 
 ### imports
-import os, sys, time, random, subprocess
+import os, sys, time, random, subprocess, shutil
 from os import path as op
 from coadaptree import *
 from balance_queue import getsq
@@ -23,7 +23,7 @@ print("scheddir=", scheddir)
 scheduler = op.join(scheddir, 'scheduler.txt')
 os.chdir(scheddir)
 cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
-qthresh = 950 if cluster == 'cedar' else 950
+qthresh = 950 if cluster == 'cedar' else 500
 
 user = os.environ['USER']
 ###
@@ -104,7 +104,12 @@ def sbatchjobs(files):
             except:          # unless gvcf_helper has already done so (shouldnt be the case, but maybe with high qthresh)
                 print('unable to unlink symlink %s' % f)
                 continue
-            os.system('sbatch %s' % realp) # then sbatch the real sh file if & only if the symlink was successfully unlinked    
+            # then sbatch the real sh file if & only if the symlink was successfully unlinked    
+            output = subprocess.check_output([shutil.which('sbatch'), realp]).decode('utf-8').replace("\n", "").split()[-1]
+            if not float(output) == int(output): # check to see if the return is a jobID
+                print('got an sbatch error: %s' % output)
+                return
+
 
 
 def main(scheddir):
