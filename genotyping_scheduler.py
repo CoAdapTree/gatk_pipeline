@@ -9,7 +9,7 @@
 """
 
 ### imports
-import os, sys, time, random, subprocess
+import os, sys, time, random, subprocess, shutil
 from os import path as op
 from os import listdir
 from coadaptree import *
@@ -54,15 +54,19 @@ def startscheduler(scheduler):
 def sbatchjobs(files):
     for f in files:
         realp = op.realpath(f) # find the file to which the symlink file is linked
-        if op.exists(f):
+        if op.exists(f): # as long as the symlink is still there
             # print (f)
             try:
-                os.unlink(f) # first remove the symlink from the scheddir
+                os.unlink(f) # first try to remove the symlink from the scheddir
                 print('unlinked %s' % f)
             except:          # unless gvcf_helper has already done so (shouldnt be the case, but maybe with high qthresh)
-                print('unable to unlink symlink %f' % f)
+                print('unable to unlink symlink %s' % f)
                 continue
-            os.system('sbatch %s' % realp) # then sbatch the real sh file if & only if the symlink was successfully unlinked    
+            # then sbatch the real sh file if & only if the symlink was successfully unlinked    
+            output = subprocess.check_output([shutil.which('sbatch'), realp]).decode('utf-8').replace("\n", "").split()[-1]
+            if not float(output) == int(output): # check to see if the return is a jobID
+                print('got an sbatch error: %s' % output)
+                return
 
 
 def main(DIR):
@@ -129,7 +133,7 @@ if __name__ == '__main__':
     scheduler = op.join(scheddir, 'scheduler.txt')
     os.chdir(scheddir)
     cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
-    qthresh = 150 if cluster == 'cedar' else 150
+    qthresh = 950 if cluster == 'cedar' else 300
     user = os.environ['USER']
     ###
     
