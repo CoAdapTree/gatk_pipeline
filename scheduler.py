@@ -23,7 +23,8 @@ print("scheddir=", scheddir)
 scheduler = op.join(scheddir, 'scheduler.txt')
 os.chdir(scheddir)
 cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
-qthresh = 900 if cluster == 'cedar' else 900
+qthresh = 950 if cluster == 'cedar' else 950
+
 user = os.environ['USER']
 ###
 
@@ -101,7 +102,7 @@ def sbatchjobs(files):
                 os.unlink(f) # first try to remove the symlink from the scheddir
                 print('unlinked %s' % f)
             except:          # unless gvcf_helper has already done so (shouldnt be the case, but maybe with high qthresh)
-                print('unable to unlink symlink %f' % f)
+                print('unable to unlink symlink %s' % f)
                 continue
             os.system('sbatch %s' % realp) # then sbatch the real sh file if & only if the symlink was successfully unlinked    
 
