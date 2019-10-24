@@ -62,11 +62,20 @@ def sbatchjobs(files):
             except:          # unless gvcf_helper has already done so (shouldnt be the case, but maybe with high qthresh)
                 print('unable to unlink symlink %s' % f)
                 continue
-            # then sbatch the real sh file if & only if the symlink was successfully unlinked    
-            output = subprocess.check_output([shutil.which('sbatch'), realp]).decode('utf-8').replace("\n", "").split()[-1]
+            # then sbatch the real sh file if & only if the symlink was successfully unlinked
+            print('realp = ', realp)
+            print('shutil.which(sbatch) =', shutil.which('sbatch'))
+            try:
+                output = subprocess.check_output([shutil.which('sbatch'), realp]).decode('utf-8').replace("\n", "").split()[-1]
+            except subprocess.CalledProcessError as e:
+                print("couldn't sbatch. Here is the error:\n%s" % e)
+                os.symlink(realp, f)
+                print(f'relinked {op.basename(f)} to file: {realp}')
+                return
             if not float(output) == int(output): # check to see if the return is a jobID
                 print('got an sbatch error: %s' % output)
                 return
+        time.sleep(5)
 
 
 def main(DIR):
@@ -133,7 +142,7 @@ if __name__ == '__main__':
     scheduler = op.join(scheddir, 'scheduler.txt')
     os.chdir(scheddir)
     cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
-    qthresh = 950 if cluster == 'cedar' else 300
+    qthresh = 0 if cluster == 'cedar' else 0
     user = os.environ['USER']
     ###
     
