@@ -86,7 +86,7 @@ def removeworker(scheddir,trushfile):
 def getpids(sq):
     pids = []
     if len(sq) > 0:
-        print('getpids len(sq) > 0')
+#         print('getpids len(sq) > 0')
         pids = []
         for q in sq:
             if not q == '':
@@ -99,9 +99,9 @@ def bigbrother(rescheduler):
     print('reschduler = ', rescheduler)
     # if the scheduler controller has died, remove the scheduler
     with open(rescheduler, 'r') as o:
-        text = o.read().replace("\n", "")
-        os.system('echo %s' % text)
-    pid = text.split()[-1]
+        bigtext = o.read().replace("\n", "")
+        os.system('echo %s' % bigtext)
+    pid = bigtext.split()[-1]
     if not pid == '=':
         sq = getsq(states=['running'])
         pids = getpids(sq)
@@ -111,6 +111,23 @@ def bigbrother(rescheduler):
         else:
             os.system('echo controller is running, allowing it to proceed')
 
+
+def handle_cancelled(o):
+    # no need to change time this first time
+    os.system('echo leaving orginal time as-is')
+    os.system('echo cancelled =%s' % cancelled)
+    for line in o[::-1]:
+        if line.startswith('gatk HaplotypeCaller'):
+            vcf = line.split()[-5]
+            trushfile = vcf2sh(vcf)
+            linkname = op.join(scheddir, op.basename(trushfile))
+
+            # add job back to the queue 
+            addlink((trushfile, linkname))
+
+            # remove worker from workingdir
+            removeworker(scheddir,trushfile)
+            break
 
 # identify outs that aren't running
 createdrescheduler = False
@@ -136,9 +153,9 @@ if len(outs) > 0:
         createdrescheduler = True
         # double check that the rescheduler is correct
         with open(rescheduler,'r') as o:
-            text = o.read()
-        if not text.split()[-1] == '=':
-            if not text.split()[-1] == jobid:
+            reschedtext = o.read()
+        if reschedtext.split()[-1] != '=':
+            if reschedtext.split()[-1] != jobid:
                 os.system('echo another rescheduler is in conflict. Allowing other rescheduler to proceed. Exiting')
                 time.sleep(5)
                 exit()
@@ -192,22 +209,7 @@ if len(outs) > 0:
                             os.system('echo helped by gvcf_helper =%s' % helped)
                             break
                     if helped is True or cancelled is True: # if the job ended on a call from gvcf_helper.py or was cancelled
-                        # no need to change time this first time
-                        os.system('echo leaving orginal time as-is')
-                        os.system('echo cancelled =%s' % cancelled)
-                        for line in o[::-1]:
-                            if line.startswith('gatk HaplotypeCaller'):
-                                vcf = line.split()[-5]
-                                trushfile = vcf2sh(vcf)
-                                linkname = op.join(scheddir, op.basename(trushfile))
-                                
-                                # add job back to the queue 
-                                addlink((trushfile, linkname))
-                                
-                                # remove worker from workingdir
-                                removeworker(scheddir,trushfile)
-                                
-                                break
+                        handle_cancelled(o)
                     else:
                         for line in o[::-1]:
                             # this was the call from the original sh file
@@ -222,31 +224,33 @@ if len(outs) > 0:
                                     sh = O.read()
 #                                 sh = open(trushfile).read()
                                 if '00:00:05' in sh: # for debugging/testing
-                                    text = sh.replace('00:00:05', '02:59:00')
+                                    timetext = sh.replace('00:00:05', '02:59:00')
                                 elif '02:59:00' in sh:
-                                    text = sh.replace('02:59:00', '11:59:00')
+                                    timetext = sh.replace('02:59:00', '11:59:00')
                                     os.system('echo extending time to 11:59:00')
                                 elif '11:59:00' in sh:
-                                    text = sh.replace('11:59:00', '23:59:00')
+                                    timetext = sh.replace('11:59:00', '23:59:00')
                                     os.system('echo extending time to 23:59:00')
                                 elif '23:59:00' in sh:
-                                    text = sh.replace('23:59:00', '7-00:00:00')
+                                    timetext = sh.replace('23:59:00', '7-00:00:00')
                                     os.system('echo extending time to 7 days')
                                 elif '7-00:00:00' in sh:
-                                    text = sh.replace('7-00:00:00', '14-00:00:00')
+                                    timetext = sh.replace('7-00:00:00', '14-00:00:00')
                                     os.system('echo replacing 14-hour time with 7 days')
                                 else:
                                     os.system('echo cound not find replacement')
                                     os.system('cat %s' % trushfile)
                                     break
                                 with open(trushfile,'w') as O:
-                                    O.write("%s" % text)
-
+                                    O.write("%s" % timetext)
+                                
                                 # add job back to the queue  
                                 linkname = op.join(scheddir, op.basename(trushfile))
                                 addlink((trushfile, linkname))
                                 
                                 break
+                elif cancelled is True:
+                    handle_cancelled(o)
                 else: # there's a mem oerror
                     edited = True
                     # at t=0, all sh files have mem==8000M, so if gvcf_helper.py caused mem error, the last call needs more mem

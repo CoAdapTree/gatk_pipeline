@@ -1,6 +1,6 @@
 """
 Remove multiallic SNPs, keep SNPs where REF isn't present in samps but SNP has two ALT alleles,
-discard any biallelic SNPs with REF=N.
+discard any biallelic SNPs with REF=N and one ALT.
 This uses pandas chunks so that large tablefiles can be passed to script.
 
 ### usage
@@ -44,7 +44,7 @@ def get_chunks(tablefile):
     return chunks, basename
 
 
-def adjust_freqs(smalldf):
+def adjust_freqs(smalldf, alts):
     """
     For loci with REF not present, set ALT freqs with respect to the second ALT allele.
     
@@ -56,10 +56,20 @@ def adjust_freqs(smalldf):
     """
 
     alt1, alt2 = alts
-    df.loc[0, 'ALT'] = f"{alt1}+{alt2}"
-    df.loc[0, 'AF'] = smalldf.loc[1, 'AF']
-    return df 
+    smalldf.loc[0, 'AF'] = smalldf.loc[1, 'AF']
+    smalldf.loc[0, 'ALT'] = f"{alt1}+{alt2}"
+    return smalldf 
 
+
+def keep_goodloci(chunk):
+    # count SNPs, if count > 1 then it's a SNP with multiple ALT alleles
+    loccount = table(chunk['locus'])
+    # identify loci with exactly one ALT allele
+    goodloci = [locus for locus in loccount if loccount[locus] == 1]
+    # filter chunk for multiallelic (multiple lines), REF != N
+    chunk = chunk[chunk['locus'].isin(goodloci)].copy()
+    chunk = chunk[chunk['REF'] != 'N'].copy()
+    return chunk.copy()
 
 def rm_multiallelic(tablefile):
     """
@@ -73,23 +83,19 @@ def rm_multiallelic(tablefile):
     df - pandas.dataframe; non-multiallelic-filtered VariantsToTable output
     """
     print(f'removing multiallelic sites from {tablefile}')
+    tf = op.basename(tablefile)
     chunks, basename = get_chunks(tablefile)
     
     dfs = []
     for chunk in chunks:
         # give SNPs IDs by CHROM+POS
         chunk['locus'] = ["%s-%s" % (chrom,pos) for (chrom,pos) in zip(chunk["CHROM"], chunk["POS"])]
-        # count SNPs, if count > 1 then it's a SNP with multiple ALT alleles
-        loccount = table(chunk['locus'])
-        # identify loci with exactly one ALT allele
-        goodloci = [locus for locus in loccount if loccount[locus] == 1]
-        # filter chunk for multiallelic (multiple lines), REF != N
-        chunk = chunk[chunk['locus'].isin(goodloci)].copy()
-        chunk = chunk[chunk['REF'] != 'N'].copy()
+        chunk = keep_goodloci(chunk.copy())
         # keep whatever is leftover after filtering
         dfs.append(chunk)
     # combine filtered chunks
     df = pd.concat(dfs)
+    df = keep_goodloci(df.copy())  # in case multiallelic sites were split between chunks
     print(f'\t{tf} has {len(df.index)} good SNPs (non-multiallelic)')
     return df
 
@@ -135,8 +141,9 @@ def get_noref_snps(tablefile):
                         break
                 # if it seems to be a true multiallelic site and one of the ALTs is not *
                 if keep is True and '*' not in alts:
-                    newsmalldf = adjust_freqs(smalldf.copy(), ref, alts)
+                    newsmalldf = adjust_freqs(smalldf.copy(), alts)
                     dfs.append(pd.DataFrame(newsmalldf.loc[0,:]).T)
+    tf = op.basename(tablefile)
     print(f"\tfound {len(dfs)} SNPs where REF is not an allele in samps: {tf}")
     return dfs
 
@@ -179,4 +186,4 @@ def main(tablefile, outfile):
 if __name__ == '__main__':
     thisfile, tablefile, outfile = sys.argv
 
-    main(tablefile)
+    main(tablefile, outfile)

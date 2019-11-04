@@ -10,7 +10,7 @@
 # - fisher strand > 60,
 # - mapping quality < 40,
 # - MQRankSum < -12.5,
-# - MAF < 0.05,
+# - MAF < 0.05 (default - user can define when starting pipeline with 00_start)
 # - GQ < 20 for individual samps,
 # - no less than 75% missing data
 #
@@ -22,13 +22,11 @@
 """
 
 ### imports
-import sys
-import os
+import sys, os, pickle, subprocess
 from os import path as op
-from os import listdir
-import pickle
 import numpy as np
 from coadaptree import fs, createdirs, pklload, get_email_info
+from genotyping_scheduler import startscheduler, bigbrother, delsched
 ### 
 
 ### args
@@ -36,8 +34,18 @@ thisfile, parentdir = sys.argv
 if parentdir.endswith("/"):
     parentdir = parentdir[:-1]
 poolref = pklload(op.join(parentdir, 'poolref.pkl'))
-email_info = get_email_info(parentdir, 'concat')
+email_info = get_email_info(parentdir, 'final')
+bash_variables = op.join(parentdir, 'bash_variables')
+maf = pklload(op.join(parentdir, 'maf.pkl'))
 ###
+
+# make a reservation file so other jobs don't call 05.py
+resfile = op.join(parentdir, 'shfiles/06_reservation.txt')
+if not op.exists(resfile):
+    startscheduler(resfile)
+else:
+    print('06.py was running')
+    bigbrother(resfile, DIR=None)
 
 ### dirs
 shdir   = op.join(parentdir, 'shfiles/concat')
@@ -59,7 +67,7 @@ for i,snp in enumerate(snpfiles):
         if p in op.basename(snp):
             pool = p
             break
-    if not pool in combdict:
+    if pool not in combdict:
         combdict[pool] = []
     combdict[pool].append(snp)
     del pool  # will cause script to error if pool isn't found in snpfile
@@ -78,9 +86,11 @@ for pool,ref in poolref.items():
 shfiles = []
 fcats   = []
 for pool,files in combdict.items():
+    ref = poolref[pool]
     if len(files) == expected[pool]:
         os.system(f'echo creating sbatch file for {pool}')
-        catout = op.join(catdir, f"{pool}_concatenated_snps.vcf.gz")
+        catout = op.join(catdir, f"{pool}_concatenated.vcf.gz")
+        snpsout = op.join(catdir, f"{pool}_concatenated_snps.vcf.gz")
         filtout = op.join(filtdir, f"{pool}_filtered_concatenated_snps.vcf.gz")
         tbi = filtout.replace(".gz",".gz.tbi")
         file = op.join(shdir,"%s-concat.sh" % pool)
@@ -100,7 +110,7 @@ for pool,files in combdict.items():
 #SBATCH --output={pool}-concat_%j.out 
 {email_info}
 
-source $HOME/.bashrc
+source {bash_variables}
 export _JAVA_OPTIONS="-Xms256m -Xmx48g"
 echo $0
 
@@ -112,26 +122,26 @@ module unload bcftools
 module load gatk/4.1.0.0
 echo -e "\nFILTERING VARIANTS"
 gatk IndexFeatureFile -F {catout}
-gatk VariantFiltration -R {ref} -V {catout} -O {filtout} --filter-expression \
+gatk SelectVariants -R {ref} -V {catout} --select-type-to-include SNP -O {snpsout}
+gatk VariantFiltration -R {ref} -V {snpsout} -O {filtout} --filter-expression \
 "QD < 2.0 || FS > 60.0 || MQ < 40.0 || MQRankSum < -12.5" \
 --filter-name "coadaptree_filter"
 module unload gatk
 
 module load vcftools/0.1.14
 echo -e "\nFILTERING MISSING DATA"
-vcftools --gzvcf {filtout} --maf 0.05 --minGQ 20 --max-missing 0.75 --recode \
+vcftools --gzvcf {filtout} --maf {maf} --minGQ 20 --max-missing 0.75 --recode \
 --recode-INFO-all --out {maxmissing}
 module unload vcftools
 
 module load gatk/4.1.0.0
 echo -e "\nVARIANTS TO TABLE"
 gatk VariantsToTable --variant {maxmissing}.recode.vcf -F CHROM -F POS -F REF -F ALT -F AF -F DP -F QD \
--F FS -F MQ -F MQRankSum -F ReadPosRankSum -GF AD -GF DP -GF GQ -GF GT -GF SB -O {tablefile} --split-multi-allelic
+-F FS -F MQ -F MQRankSum -F ReadPosRankSum -F TYPE -F FILTER -GF AD -GF DP -GF GQ -GF GT -GF SB -O {tablefile} --split-multi-allelic
 module unload gatk
 
-echo -e "\nREMOVING MULTIALLELIC, KEEPING noREF SNPs WITH TWO ALT ALLELES
-cd $HOME/gatk_pipeline
-python remove_multiallelic-keep_noREF.py {tablefile} {tablefile_filtered} 
+echo -e "\nREMOVING MULTIALLELIC, KEEPING noREF SNPs WITH TWO ALT ALLELES"
+python $HOME/gatk_pipeline/remove_multiallelic-keep_noREF.py {tablefile} {tablefile_filtered} 
 
 '''
             with open(file,'w') as o:
@@ -158,3 +168,8 @@ for sh in shfiles:
 print('here are the fcats:')
 for f in fcats:
     print(f)
+    
+# balance queue
+balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+subprocess.call([sys.executable, balance_queue, 'genotype', parentdir])
+subprocess.call([sys.executable, balance_queue, 'concat', parentdir])

@@ -9,32 +9,13 @@
 """
 
 ### imports
-import os
-import sys
+import os, sys, time, random, subprocess, shutil
 from os import path as op
 from os import listdir
-import time
-import random
 from coadaptree import *
 from balance_queue import getsq
 ###
 
-### args
-thisfile, parentdir = sys.argv
-###
-
-### reqs
-if parentdir.endswith("/"): #sometimes I run the scheduler from the command line, which appends / which screws up op.dirname()
-    parentdir = parentdir[:-1]
-scheddir  = op.join(parentdir, 'shfiles/supervised/select_variants')
-print("scheddir = ", scheddir)
-assert op.exists(scheddir)
-scheduler = op.join(scheddir, 'scheduler.txt')
-os.chdir(scheddir)
-cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
-qthresh = 1200 if cluster == 'cedar' else 900
-user = os.environ['USER']
-###
 
 ### defs
 print('running scheduler.py')
@@ -52,8 +33,7 @@ def getpids():
     pids = [p for p in pids if not p == '']
     if len(pids) != luni(pids):
         print('len !- luni pids')
-        delsched(scheduler)
-        exit()
+        return 'exitneeded'
     return pids[1:]
 
 
@@ -74,15 +54,28 @@ def startscheduler(scheduler):
 def sbatchjobs(files):
     for f in files:
         realp = op.realpath(f) # find the file to which the symlink file is linked
-        if op.exists(f):
+        if op.exists(f): # as long as the symlink is still there
             # print (f)
             try:
-                os.unlink(f) # first remove the symlink from the scheddir
+                os.unlink(f) # first try to remove the symlink from the scheddir
                 print('unlinked %s' % f)
             except:          # unless gvcf_helper has already done so (shouldnt be the case, but maybe with high qthresh)
-                print('unable to unlink symlink %f' % f)
+                print('unable to unlink symlink %s' % f)
                 continue
-            os.system('sbatch %s' % realp) # then sbatch the real sh file if & only if the symlink was successfully unlinked    
+            # then sbatch the real sh file if & only if the symlink was successfully unlinked
+            print('realp = ', realp)
+            print('shutil.which(sbatch) =', shutil.which('sbatch'))
+            try:
+                output = subprocess.check_output([shutil.which('sbatch'), realp]).decode('utf-8').replace("\n", "").split()[-1]
+            except subprocess.CalledProcessError as e:
+                print("couldn't sbatch. Here is the error:\n%s" % e)
+                os.symlink(realp, f)
+                print(f'relinked {op.basename(f)} to file: {realp}')
+                return
+            if not float(output) == int(output): # check to see if the return is a jobID
+                print('got an sbatch error: %s' % output)
+                return
+        time.sleep(5)
 
 
 def main(DIR):
@@ -105,30 +98,57 @@ def main(DIR):
             print('no files to sbatch')
     else:
         print('genotyping_scheduler was not running, but no room in queue' )
-    pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n","")
-    os.system('python %s geno' % (op.join(pipedir,'balance_queue.py')))
+    balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+    subprocess.call([sys.executable, balance_queue, 'geno', parentdir])
     delsched(scheduler)
 
 
-def bigbrother(scheduler,DIR):
+def bigbrother(scheduler, DIR=None):
     # if the scheduler controller has died, remove the scheduler
-    with open(scheduler,'r') as o:
+    with open(scheduler, 'r') as o:
         text = o.read()
     pid = text.split()[-1]
     if not pid == '=':
         pids = getpids()
-        if not pid in pids:
+        if pids == 'exitneeded':
+            delsched(scheduler)
+            exit()
+        if pid not in pids:
             print('controller was not running, so the scheduler was destroyed')
             delsched(scheduler)
-            main(DIR)
+            if DIR is not None:
+                # will skip when calling from *scheduler.py
+                main(DIR)  # since job wasn't running, just try to run with this job
+            else:
+                # in 05_scheduler and 06_filter, this allows it to proceed with scheduling
+                return
         else:
             print('controller is running, allowing it to proceed')
+            exit()
 ###
 
 # main
-time.sleep(random.random())  # just in case the very first instances of scheduler.py start at v similar times
-if not op.exists(scheduler): # if scheduler isn't running
-    main(scheddir)
-else:
-    print('scheduler was running')
-    bigbrother(scheduler,scheddir)
+if __name__ == '__main__':
+    ### args
+    thisfile, parentdir = sys.argv
+    ###
+
+    ### reqs
+    if parentdir.endswith("/"): #sometimes I run the scheduler from the command line, which appends / which screws up op.dirname()
+        parentdir = parentdir[:-1]
+    scheddir  = op.join(parentdir, 'shfiles/supervised/select_variants')
+    print("scheddir = ", scheddir)
+    assert op.exists(scheddir)
+    scheduler = op.join(scheddir, 'scheduler.txt')
+    os.chdir(scheddir)
+    cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
+    qthresh = 0 if cluster == 'cedar' else 0
+    user = os.environ['USER']
+    ###
+    
+    time.sleep(random.random())  # just in case the very first instances of scheduler.py start at v similar times
+    if not op.exists(scheduler): # if scheduler isn't running
+        main(scheddir)
+    else:
+        print('scheduler was running')
+        bigbrother(scheduler,scheddir)

@@ -12,7 +12,7 @@
 ###
 """
 
-import sys, os, balance_queue, subprocess, shutil
+import sys, os, subprocess, shutil
 from os import path as op
 from coadaptree import pklload, pkldump, get_email_info, makedir
 
@@ -23,6 +23,7 @@ pooldir = op.join(parentdir, pool)
 shdir = op.join(pooldir, 'shfiles')
 ref = pklload(op.join(parentdir, 'poolref.pkl'))[pool]
 r1r2outs = pklload(op.join(pooldir, 'samp2_r1r2out.pkl'))[samp]
+bash_variables = op.join(parentdir, 'bash_variables')
 
 # create dirs 
 bwashdir = op.join(shdir, '02_bwa_shfiles')
@@ -108,9 +109,7 @@ text = f'''#!/bin/bash
 {bwatext}
 
 # mark and build
-source $HOME/.bashrc
-export PYTHONPATH="${{PYTHONPATH}}:$HOME/gatk_pipeline"
-export SQUEUE_FORMAT="%.8i %.8u %.12a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
+source {bash_variables}
 python $HOME/gatk_pipeline/03_mark_build.py {pooldir} {samp}
 '''
 
@@ -124,5 +123,6 @@ os.chdir(bwashdir)
 print('shdir = ', shdir)
 subprocess.call([shutil.which('sbatch'), qsubfile])
 
-balance_queue.main('balance_queue.py', 'bwa')
-balance_queue.main('balance_queue.py', 'trim')
+balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+subprocess.call([sys.executable, balance_queue, 'bwa', parentdir])
+subprocess.call([sys.executable, balance_queue, 'trim', parentdir])

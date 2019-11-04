@@ -25,6 +25,7 @@ parentdir = op.dirname(pooldir)
 pool = op.basename(pooldir)
 f2samp = pklload(op.join(parentdir, 'f2samp.pkl'))
 adaptors = pklload(op.join(parentdir, 'adaptors.pkl'))
+bash_variables = op.join(parentdir, 'bash_variables')
 for arg, path in [('pooldir', pooldir), ('ref', ref)]:
     if not op.exists(path):
         print("The argument does not exist in the specified path:\narg = %s\npath =%s" % (arg, path))
@@ -85,9 +86,7 @@ for samp, pairs in seq_pairs.items():
 #SBATCH --output=%(pool)s-%(samp)s-trim_%%j.out
 %(email_text)s
 
-source $HOME/.bashrc
-export PYTHONPATH="${PYTHONPATH}:$HOME/gatk_pipeline"
-export SQUEUE_FORMAT="%%.8i %%.8u %%.12a %%.68j %%.3t %%16S %%.10L %%.5D %%.4C %%.6b %%.7m %%N (%%r)"
+source %(bash_variables)s
 
 module load fastp/0.19.5
 
@@ -109,7 +108,7 @@ module load fastp/0.19.5
         logfile = r1out.replace("R1", "").replace(".fastq.gz", "_R1_R2_stats.log")
         samp2_r1r2out[samp].append((r1out, r2out))
 
-        text = '''fastp -i %(r1)s -o %(r1out)s -I %(r2)s -O %(r2out)s --disable_quality_filtering \
+        text = '''fastp -i %(r1)s -o %(r1out)s -I %(r2)s -O %(r2out)s \
 -g --cut_window_size 5 --cut_mean_quality 30 --n_base_limit 20 --length_required 75 \
 -h %(html)s.html --cut_by_quality3 --thread 16 --json %(json)s.json \
 %(adaptorflag)s > %(logfile)s

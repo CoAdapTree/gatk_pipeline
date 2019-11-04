@@ -1,3 +1,4 @@
+"""
 ### FIX
 # at some point, have the jobID/mem as an input arg instead of scripted
 # merge gvcf_helper.py and genotyping_helper.py
@@ -9,11 +10,10 @@
 ###
 # purpose: to keep running gatk GenotypeGVCF commands until time or memory runs out
 ###
+"""
 
 ### imports
-import sys
-import shutil
-import signal
+import sys, shutil, signal, subprocess
 from random import shuffle
 from coadaptree import *
 ###
@@ -25,7 +25,8 @@ if parentdir.endswith("/"):
 ###
 
 # balance the queue
-os.system('python $HOME/gatk_pipeline/balance_queue.py genotyp')
+balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+subprocess.call([sys.executable, balance_queue, 'genotype', parentdir])
 
 # make sure the previous outfile was created
 def checkoutfile(outfile):
@@ -53,7 +54,7 @@ f = [f for f in fs(scheddir) if str(jobid) in f]
 try:
     assert len(f) == 1
     f = f[0]
-except:
+except AssertionError as e:
     os.system('echo could not find slurm job file, exiting genotyping_helper')
     exit()
 with open(f,'r') as o:

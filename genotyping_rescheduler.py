@@ -137,7 +137,22 @@ def checktbis(shfile):
     with open(shfile, 'w') as s:
         s.write("%s" % text)
 
-
+def handle_cancelled(o):
+    # no need to change time this first time
+    os.system('echo leaving orginal time as-is')
+    os.system('echo cancelled =%s' % cancelled)
+    for line in o[::-1]:
+        if line.startswith('reading') or line.startswith('shfile ='):
+            trushfile = [x for x in line.split() if x.endswith('.sh')][0]
+            os.system ('echo checking tbis of original sh file %s' % trushfile)
+            checktbis(trushfile)
+            # add job back to the queue 
+            linkname = op.join(DIR,op.basename(trushfile))
+            addlink((trushfile,linkname))
+            # remove worker from workingdir
+            removeworker(DIR,trushfile)
+            break
+        
 # identify outs that aren't running
 sq = getsq(states=['running'])
 #print(sq)
@@ -193,7 +208,7 @@ if len(outs) > 0:
                         os.system ('echo found an error')
                         founderror = True
                         break
-            if founderror == True:
+            if founderror is True:
                 for test in o[-20:]: # look for a time error 
                     if 'time limit' in test.lower() or 'cancelled' in test.lower():
                         if 'time limit' in test.lower():
@@ -202,7 +217,7 @@ if len(outs) > 0:
                             # cancelled and time limit in test.lower()
                             cancelled = True
                         break
-                if timelimit == True:
+                if timelimit is True:
                     # look for time error
                     edited = True
                     # time error could be caused by the original sh command running out of time or ...
@@ -216,21 +231,8 @@ if len(outs) > 0:
                             helped = True
                             os.system('echo helped by genotyping_helper =%s' % helped)
                             break
-                    if helped == True: # if the job ended on a call from gvcf_helper.py or was cancelled
-                        # no need to change time this first time
-                        os.system('echo leaving orginal time as-is')
-                        os.system('echo cancelled =%s' % cancelled)
-                        for line in o[::-1]:
-                            if line.startswith('reading') or line.startswith('shfile ='):
-                                trushfile = [x for x in line.split() if x.endswith('.sh')][0]
-                                os.system ('echo checking tbis of original sh file %s' % trushfile)
-                                checktbis(trushfile)
-                                # add job back to the queue 
-                                linkname = op.join(DIR,op.basename(trushfile))
-                                addlink((trushfile,linkname))
-                                # remove worker from workingdir
-                                removeworker(DIR,trushfile)
-                                break  
+                    if helped is True: # if the job ended on a call from gvcf_helper.py or was cancelled
+                        handle_cancelled(o)
                     else:
                         for line in o:
                             # this was the call from the original sh file, need to change time
@@ -269,21 +271,8 @@ if len(outs) > 0:
                                 linkname = op.join(DIR,op.basename(trushfile))
                                 addlink((trushfile,linkname))
                                 break
-                elif cancelled == True:
-                    # no need to change time this first time
-                    os.system('echo leaving orginal time as-is')
-                    os.system('echo cancelled =%s' % cancelled)
-                    for line in o[::-1]:
-                        if line.startswith('reading') or line.startswith('shfile ='):
-                            trushfile = [x for x in line.split() if x.endswith('.sh')][0]
-                            os.system ('echo checking tbis of original sh file %s' % trushfile)
-                            checktbis(trushfile)
-                            # add job back to the queue 
-                            linkname = op.join(DIR,op.basename(trushfile))
-                            addlink((trushfile,linkname))
-                            # remove worker from workingdir
-                            removeworker(DIR,trushfile)
-                            break  
+                elif cancelled is True:
+                    handle_cancelled(o)
                 else: # there's a mem oerror
                     edited = True
                     # at t=0, all sh files have mem==8000M, so if gvcf_helper.py caused mem error, the last call needs more mem
@@ -300,27 +289,27 @@ if len(outs) > 0:
                                 sh = trush.read()
                             if '=4000M' in sh:
                                 text = sh.replace('=4000M', '=12000M')
-                                text = sh.replace("-Xmx3g", "-Xmx10g")
+                                text = text.replace("-Xmx3g", "-Xmx10g")
                                 os.system('echo increasing mem to 12G')
                             elif '=12000M' in sh:
                                 text = sh.replace('=12000M', '=20000M')
-                                text = sh.replace("-Xmx10g", "-Xmx18g")
+                                text = text.replace("-Xmx10g", "-Xmx18g")
                                 os.system('echo increasing mem to 20G')
                             elif '=20000M' in sh:
                                 text = sh.replace('=20000M', '=30000M')
-                                text = sh.replace("-Xmx18g", "-Xmx28g")
+                                text = text.replace("-Xmx18g", "-Xmx28g")
                                 os.system('echo increasing mem to 30G')
                             elif '=30000M' in sh:
                                 text = sh.replace('=30000M', '=50000M')
-                                text = sh.replace("-Xmx28g", "-Xmx48g")
+                                text = text.replace("-Xmx28g", "-Xmx48g")
                                 os.system('echo increasing mem to 50G')
                             elif '=50000M' in sh:
                                 text = sh.replace('=50000M', '=120000M')
-                                text = sh.replace("-Xmx48g", "-Xmx118g")
+                                text = text.replace("-Xmx48g", "-Xmx118g")
                                 os.system('echo increasing mem to 120G')
                             elif '=120000M' in sh:
                                 text = sh.replace('=120000M', '=200000M')
-                                text = sh.replace("-Xmx118g", "-Xmx198g")
+                                text = text.replace("-Xmx118g", "-Xmx198g")
                                 os.system('echo increasing mem to 200G')
                             with open(trushfile,'w') as o:
                                 o.write("%s" % text)

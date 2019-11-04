@@ -2,17 +2,45 @@
 Distribute priority jobs among accounts.
 
 ###
-# usage: balance_queue.py phaseOFpipeline
+# purpose: evenly redistributes jobs across available slurm accounts. Jobs are
+#          found via searching for the keyword among the squeue output fields;
+#          Helps speed up effective run time by spreading out load.
 ###
 
 ###
-# purpose: evenly redistributes jobs across available accounts based on priority based on the job name
-#          (phaseOFpipeline);
-#          helps speed up effective run time
+# usage: python balance_queue.py [keyword] [parentdir]
+#
+# keyword is used to search across column data in queue
+# parentdir is used to either find a previously saved list of accounts
+#    or is set to 'choose' so the user can run from command line
+#    and manually choose which accounts are used
+#
+# accounts are those slurm accounts with '_cpu' returned from the command:
+#    sshare -U --user $USER --format=Account
+#
+# to manually balance queue using all available accounts:
+#    python balance_queue.py
+# to manually balance queue and choose among available accounts:
+#    python balance_queue.py $USER choose
+#    python balance_queue.py keyword choose
+# as run in pipeline when balancing trim jobs from 01_trim.py:
+#    this looks for accounts.pkl in parentdir to determine accounts saved in 00_start.py
+#    python balance_queue.py trim /path/to/parentdir
+#
+# because of possible exit() commands in balance_queue, this should be run
+#    as a main program, or as a subprocess when run inside another python
+#    script.
+###
+
+### assumes
+# export SQUEUE_FORMAT="%.8i %.8u %.15a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
 ###
 """
 
 import os, shutil, sys, math, subprocess, time
+from random import shuffle
+from collections import Counter
+from coadaptree import Bcolors, pklload, pkldump
 
 
 def announceacctlens(accounts, fin):
@@ -22,15 +50,15 @@ def announceacctlens(accounts, fin):
     accounts - dictionary with key = account_name, val = list of jobs (squeue output)
     fin - True if this is the final job announcement, otherwise the first announcement
     """
-    print('%s job announcement' % ('final' if fin is True else 'first'))
+    print('\t%s job announcement' % ('final' if fin is True else 'first'))
     if fin is True:
         time.sleep(1)
     for account in accounts:
-        print('%s jobs with Priority status on %s' % (str(len(accounts[account])), account))
+        print('\t%s jobs with Priority status on %s' % (str(len(accounts[account])), account))
 
 
 def checksq(sq):
-    """Make sure queue slurm command worked.
+    """Make sure queue slurm command worked. Sometimes it doesn't.
     
     Positional arguments:
     sq - list of squeue slurm command jobs, each line is str.split()
@@ -38,17 +66,17 @@ def checksq(sq):
     """
     exitneeded = False
     if not isinstance(sq, list):
-        print("type(sq) != list, exiting %(thisfile)s" % globals())
+        print("\ttype(sq) != list, exiting %(thisfile)s" % globals())
         exitneeded = True
     for s in sq:
         if 'socket' in s.lower():
-            print("socket in sq return, exiting %(thisfile)s" % globals())
+            print("\tsocket in sq return, exiting %(thisfile)s" % globals())
             exitneeded = True
         if not int(s.split()[0]) == float(s.split()[0]):
-            print("could not assert int == float, %s" % (s[0]))
+            print("\tcould not assert int == float, %s" % (s[0]))
             exitneeded = True
     if exitneeded is True:
-        print('slurm screwed something up for %(thisfile)s, lame' % globals())
+        print('\tslurm screwed something up for %(thisfile)s, lame' % globals())
         exit()
     else:
         return sq
@@ -60,9 +88,9 @@ def getsq_exit(balancing):
     Positional arguments:
     balancing - bool: True if using to balance priority jobs, else for other queue queries
     """
-    print('no jobs in queue matching query')
+    print('\tno jobs in queue matching query')
     if balancing is True:
-        print('exiting balance_queue.py')
+        print('\texiting balance_queue.py')
         exit()
     else:
         return []
@@ -98,7 +126,7 @@ slurm command that matched grepping queries
         cmd.extend(['-t', 'PD'])
     sqout = subprocess.check_output(cmd).decode('utf-8').split('\n')
 
-    sq = [s for s in sqout if not s == '']
+    sq = [s for s in sqout if s != '']
     checksq(sq)  # make sure slurm gave me something useful
 
     # look for the things I want to grep
@@ -106,7 +134,7 @@ slurm command that matched grepping queries
     if len(sq) > 0:
         for q in sq:  # for each job in queue
             splits = q.split()
-            if 'CG' not in splits:  # grep -v 'CG'
+            if 'CG' not in splits:  # grep -v 'CG' = skip jobs that are closing
                 keepit = 0
                 if len(grepping) > 0:  # see if all necessary greps are in the job
                     for grep in grepping:
@@ -130,26 +158,28 @@ def adjustjob(acct, jobid):
                       'JobId=%s' % str(jobid)])
 
 
-def getaccounts(sq, stage):
+def getaccounts(sq, stage, user_accts):
     """
-Count the number of priority jobs assigned to each account.
-
-Positional arguments:
-sq - list of squeue slurm command jobs, each line is str.split()
-   - slurm_job_id is zeroth element of str.split()
-stage - stage of pipeline, used as keyword to filter jobs in queue
+    Count the number of priority jobs assigned to each account.
+    
+    Positional arguments:
+    sq - list of squeue slurm command jobs, each line is str.split()
+       - slurm_job_id is zeroth element of str.split()
+    stage - stage of pipeline, used as keyword to filter jobs in queue
+    user_accts - list of slurm accounts to use in balancing
     """
+    # get accounts with low priority
     accounts = {}
     for q in sq:
         pid = q[0]
         account = q[2].split("_")[0]
-        account = account.split("_")[0]
-        if account not in accounts:
+        if account not in accounts and account in user_accts:
             accounts[account] = {}
         accounts[account][pid] = q
-#     if len(accounts.keys()) == 3 and stage != 'final': # all accounts have low priority ### use 3 when using RAC
-    if len(accounts.keys()) == 2 and stage != 'final':  # all accounts have low priority   ### use 2 when not using RAC
-        print('all accounts have low priority, leaving queue as-is')
+
+    # if all user_accts have low priority, exit()
+    if len(accounts.keys()) == len(user_accts) and stage != 'final':
+        print('\tall accounts have low priority, leaving queue as-is')
         announceacctlens(accounts, True)
         exit()
     return accounts
@@ -166,157 +196,179 @@ def getbalance(accounts, num):
     for account in accounts:
         sums += len(accounts[account].keys())
     bal = math.ceil(sums/num)
-    print('bal%i %i= ' % (num, bal))
     return bal
 
 
-# def checknumaccts(accts, checking, mc):
-#     # len(accounts) will never == 2 after pop, since I checked for len(accounts) == 3
-#     if len(accts.keys()) == 0:
-#         if checking == 'RAC':
-#             print('RAC has low priority status, skipping RAC as taker')
-#         else:
-#             print('moved %s jobs to RAC' % str(mc))
-#         exit()
-#
-#
-# def redistribute4g(accounts, bal, rac, mcount=0):
-#     if rac in accounts:    # no need to redistribute to rac if rac has low priority
-#         accounts.pop(rac)  # drop rac from list to redistribute, exit if nothing to redistribute
-#         checknumaccts(accounts, 'rac', '')    # if all jobs are on rac, exit
-#         return accounts
-#     keys = list(accounts.keys())
-#     # print('before loop %s' % keys)
-#     for account in keys:
-#         # distribute 4G jobs to rac
-#         pids = list(accounts[account].keys())
-#         mcount = 0
-#         for pid in pids:
-#             mem = int([m for m in accounts[account][pid] if m.endswith('M')][0].split("M")[0])
-#             if mem <= 4000:
-#                 # if it can be scheduled on the rac, change the account of the jobid, and remove jobid from list
-#                 adjustjob(rac, pid)
-#                 accounts[account].pop(pid)
-#                 mcount += 1
-#                 if mcount == bal:
-#                     break
-#         print("distributed {} jobs from {} to rac".format(mcount, account))
-#         if len(accounts[account].keys()) == 0:
-#             accounts.pop(account)
-#     checknumaccts(accounts, 'none', mcount)  # if all jobs were redistributed to the rac, exit
-#     return accounts
-
-
-def gettaker(accounts, defs):
-    """Determine which job should receive jobs from the one with priority jobs.
-
-    Positional arguments:
-    accounts - dictionary with key = account_name, val = list of jobs (squeue output)
-    defs - default account names to balance among. (TODO: will 'work' if defs > 2, but won't evenly dist.)
-    """
-    giver = ''
-    keys = list(accounts.keys())
-    if len(keys) > 1:
-        # if there are at least two accounts, figure out which account has more (assign to final giver if tie)
-        maxx = 0
-        for acct in keys:
-            if len(accounts[acct]) > maxx:
-                giver = acct
-                maxx = len(accounts[acct])
+def choose_accounts(accts):
+    print(Bcolors.BOLD + '\nDetermining which slurm accounts are available for use by balance_queue.py' + Bcolors.ENDC)
+    if len(accts) > 1:
+        keep = []
+        for acct in accts:
+            while True:
+                inp = input(Bcolors.WARNING + "\tINPUT NEEDED: Do you want to use this account: %s? (yes | no): " % acct + Bcolors.ENDC).lower()
+                if inp in ['yes', 'no']:
+                    if inp == 'yes':
+                        print('\t\tkeeping %s' % acct)
+                        keep.append(acct)
+                    else:
+                        print('\t\tignoring %s' % acct)
+                    break
+                else:
+                    print(Bcolors.FAIL + "Please respond with 'yes' or 'no'" + Bcolors.ENDC)
     else:
-        if not len(keys) == 1:
-            print('assertion error')
-        giver = keys[0]
-    # taker = list({'def-saitken', 'def-yeaman'}.symmetric_difference({giver}))[0]
-    taker = list(set(defs).symmetric_difference({giver}))[0]  # TODO: will 'work' if defs > 2, but won't evenly dist.
-    return giver, taker
+        # no need to ask if they want to use the only account that's available, duh
+        keep = accts
+    # make sure they've chosen at least one account
+    while len(keep) == 0:
+        print(Bcolors.FAIL + "FAIL: You need to specify at least one account. Revisiting accounts..." + Bcolors.ENDC)
+        keep = choose_accounts(accts)
+    return keep
 
-
-def givetotaker(giver, taker, accounts, bal):
-    """Give jobs to the account without jobs with priority status.
-
-    Positional arguments:
-    giver - account giving jobs to taker
-    taker - account receiving jobs from giver
-    accounts - dictionary with key = account_name, val = list of jobs (squeue output)
+        
+def get_avail_accounts(parentdir=None, save=False):
+    """Query slurm with sshare command to determine accounts available.
+    
+    If called with parentdir=None, return all available accounts.
+        - Meant to be called from command line outside of pipeline. See also sys.argv input.
+    If called with parentdir='choose', allow user to choose accounts.
+        - Meant to be called from command line outside of pipeline. See also sys.argv input.
+    If called with save=True, confirm each account with user and save .pkl file in parentdir.
+        - save=True is only called from 00_start.py
+    
+    Returns a list of accounts to balance queue.
     """
-    taken = 0
-    pids = list(accounts[giver].keys())
-    numtotake = len(pids) - bal
-    if bal == 1 and len(pids) == 1:
-        numtotake = 1
-    printout = 'giver has {} jobs to give. (bal= {}). Giver ({}) is giving {} jobs to taker ({})'.format(len(pids),
-                                                                                                         bal,
-                                                                                                         giver,
-                                                                                                         numtotake,
-                                                                                                         taker)
-    print("\t %s" % printout)
-    if numtotake > 0:
-        for pid in pids[::-1]:  # re-assign the newer jobs, hopefully older jobs will eventually run
-            adjustjob(taker, pid)
-            taken += 1
-            if taken == numtotake:
-                print("\t redistributed %s jobs from %s to %s" % (str(taken), giver, taker))
-                break
-    else:
-        print("\t giver sees that taker has enough, so giver is not giving")
 
+    if parentdir is not None and save is False:
+        # if the accounts have already been chosen, just return them right away
+        # keep 'save is False' so 00_start can overwrite previous pkl and skip here
+        pkl = os.path.join(parentdir, 'accounts.pkl')
+        if os.path.exists(pkl):
+            return pklload(pkl)
 
-def get_availaccounts():
-    """Query slurm with sshare command to determine accounts available."""
+    # get a list of all available accounts
     acctout = subprocess.check_output([shutil.which('sshare'),
                                        '-U',
                                        '--user',
                                        os.environ['USER'],
                                        '--format=Account']).decode('utf-8').split('\n')
-    accts = [acct.split()[0].split("_")[0] for acct in acctout if 'def' and 'cpu' in acct]
-    defs = [acct for acct in accts if 'def' in acct]
-    rac = [acct for acct in accts if 'rrg' in acct]
-    if len(defs) == 1:
-        # no need to try and balance
-        print('there is only one account (%s), no more accounts to f queue.\nexiting balance_queue.py' % defs[0])
-        exit()
-    if len(rac) == 1:
-        rac = rac[0]
-    elif len(rac) == 0:
-        rac = ''
-    return defs, rac
+    accts = [acct.split()[0].split("_")[0] for acct in acctout if '_cpu' in acct]
+    
+    # for running outside of the pipeline:
+    if parentdir is None:
+        # to manually run on command line, using all accounts (default + RAC)
+        return accts
+    elif parentdir == 'choose':
+        # to manually run on command line, choose accounts
+        return choose_accounts(accts)
+    
+    # save if necessary
+    if save is True:
+        # called from 00_start.py
+        keep = choose_accounts(accts)
+        pkldump(keep, os.path.join(parentdir, 'accounts.pkl'))
+        # no return necessary for 00_start.py
+        return
+    
+    return accts
 
 
-def main(thisfile, phase):
-    globals().update({'thisfile': thisfile, 'phase': phase})
+def redistribute_jobs(accts, user_accts, balance):
+    """Redistribute priority jobs to other accounts without high priority.
+    
+    Positional arguments:
+    accts - dict: key = account, value = dict with key = pid, value = squeue output
+    user_accts - list of all available slurm accounts
+    balance  - int; ceiling number of jobs each account should have after balancing
+    """
 
+    # which jobs can be moved, which accounts need jobs?
+    moveable = []
+    takers = []
+    for account in user_accts:
+        if account not in accts:  # if account has zero priority jobs
+            takers.append(account)
+        else:
+            pids = list(accts[account].keys())
+            # if account has excess, give away jobs
+            if len(pids) > balance:
+                numtomove = len(pids) - balance
+                print('\t%s is giving up %s jobs' % (account, numtomove))
+                moveable.extend(pids[-numtomove:])  # move newest jobs, hopefully old will schedule
+            # keep track of accounts that need jobs
+            elif len(pids) < balance:
+                takers.append(account)
+            elif len(pids) == 1 and balance == 1 and len(accts.keys()) < len(user_accts):
+                # if numjobs and balance == 1 but not all accounts have low priority, give up the job
+                moveable.append(pids[0])
+                
+    # shuffle list(takers) to avoid passing only to accounts that appear early in the list
+    shuffle(takers)
+    # redistribute jobs
+    taken = Counter()
+    while len(moveable) > 0:
+        for taker in takers:
+            # determine numtotake
+            if taker not in accts:
+                pids = []
+            else:
+                pids = accts[taker].keys()
+            numtotake = balance - len(pids)
+            if balance == 1 and len(pids) == 1:
+                numtotake = 1
+            # give numtotake to taker
+            for pid in moveable[-numtotake:]:
+                adjustjob(taker, pid)
+                taken[taker] += 1  # needs to be above .remove because of while()
+                moveable.remove(pid)
+    for taker,count in taken.items():
+        print('\t%s has taken %s jobs' % (taker, count))
+        
+
+def main(thisfile, keyword, parentdir):
+    globals().update({'thisfile': thisfile, 'keyword': keyword})
+
+    print(Bcolors.BOLD + '\nStarting balance_queue.py' + Bcolors.ENDC)
     # get accounts available for billing
-    defs, rac = get_availaccounts()
+    user_accts = get_avail_accounts(parentdir)
+    
+    # if only one account, skip balancing
+    if len(user_accts) == 1:
+        print('\tthere is only one account (%s), no more accounts to balance queue.' % user_accts[0])
+        print('\texiting balance_queue.py')
+        exit()
 
-    # get the queue
-    sq = getsq(grepping=[phase, 'Priority'], balancing=True)
+    # get priority jobs from the queue
+    sq = getsq(grepping=[keyword, 'Priority'], balancing=True)
 
-    # get per-account counts of jobs in Priority pending status, exit if all accounts have low priority
-    accts = getaccounts(sq, '')
-    announceacctlens(accts, False)
+    # get per-account lists of jobs in Priority pending status, exit if all accounts have low priority
+    accts = getaccounts(sq, '', user_accts)
+    announceacctlens(accts, False)  # TODO: announce all accounts, not just accts with priority jobs
 
-    # figure out how many to balance remaining
-    # balance = getbalance(accts, 3)
+    # determine number of jobs to redistribute to each account
+    balance = getbalance(accts, len(user_accts))
 
-    # redistribute 4G jobs to RAC unless RAC has low priority, exit if all jobs redistributed or no jobs to redistribute
-    # accts = redistribute4g(accts, balance, rac)
-
-    # figure out which account to add to
-    giver, taker = gettaker(accts, defs)
-
-    # redistribute to taker
-    balance = getbalance(accts, 2)
-    givetotaker(giver, taker, accts, balance)
+    # redistribute
+    redistribute_jobs(accts, user_accts, balance)
 
     # announce final job counts
-    announceacctlens(getaccounts(getsq(grepping=[phase, 'Priority'], balancing=True),
-                                 'final'),
+    announceacctlens(getaccounts(getsq(grepping=[keyword, 'Priority'], balancing=True),
+                                 'final',
+                                 user_accts),
                      True)
 
 
 if __name__ == '__main__':
     # args
-    thisfile, phase = sys.argv
+    if len(sys.argv) == 1:
+        # so I can run from command line and balance full queue
+        thisfile = sys.argv[0]
+        keyword = os.environ['USER']
+        parentdir = None
+    elif len(sys.argv) == 2:
+        # so I can run from command line without a parentdir
+        thisfile, keyword = sys.argv
+        parentdir = None
+    else:
+        thisfile, keyword, parentdir = sys.argv
 
-    main(thisfile, phase)
+    main(thisfile, keyword, parentdir)

@@ -8,6 +8,10 @@
 # (the second file with samp as key will overwrite the last)
 # as of now, that hasn't created an issue
 ###
+
+### TODO
+# assert 0 <= input maf <= 1
+###
 """
 
 import os, sys, distutils.spawn, subprocess, shutil, argparse, pandas as pd
@@ -16,7 +20,7 @@ from os import path as op
 from coadaptree import fs, pkldump, uni, luni, makedir, askforinput, Bcolors
 
 
-def create_sh(pooldirs, poolref):
+def create_sh(pooldirs, poolref, parentdir):
     # create sh files
     print(Bcolors.BOLD + '\nwriting sh files' + Bcolors.ENDC)
     for pooldir in pooldirs:
@@ -29,7 +33,8 @@ def create_sh(pooldirs, poolref):
                          pooldir,
                          ref])
     print("\n")
-    balance_queue.main('balance_queue.py', 'trim')
+    balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+    subprocess.call([sys.executable, balance_queue, 'trim', parentdir])
 
 
 def get_datafiles(parentdir, f2pool, data):
@@ -157,13 +162,16 @@ please create these files' +
             intdir = op.join(op.dirname(ref), 'intervals')
             if not op.exists(intdir):
                 printneeded = True
-            elif len([f for f in fs(intdir) if '.list' in f]) == 0:
+            elif len([f for f in fs(intdir) if '.list' in f and 'batch_' in f]) == 0:
                 printneeded = True
             if printneeded is True:
                 print(Bcolors.FAIL + 
-                      'FAIL: either the intervals dir doesn not exist or there are not interval.list files\
-\nFAIL: intdir should be here: %s' % intdir +
-                      Bcolors.ENDC)
+                      'FAIL: either the intervals dir doesn not exist or there are not batch_interval.list files\
+\nFAIL: intdir should be here: %s\
+\nFAIL: interval filenames should be of the form "batch_uniqueIDENTIFIER.list"\
+\nFAIL:      these files must begin with "batch" followed by one underscore followed\
+\nFAIL:      by "uniqueIDENTIFIER" which can be any string that does not include\
+\nFAIL:      an underscore (eg chrXIII or 0013 for batch_0013.list).' % intdir + Bcolors.ENDC)
                 exit()
             poolref[pool] = ref
         rginfo[samp] = {}
@@ -188,29 +196,58 @@ please create these files' +
     return data, f2pool, poolref
 
 
-def check_reqs():
-    # check for assumed exports
-    print(Bcolors.BOLD + '\nchecking for exported variables' + Bcolors.ENDC)
-    for var in ['SLURM_ACCOUNT', 'SBATCH_ACCOUNT', 'SALLOC_ACCOUNT',
-                'PYTHONPATH', 'SQUEUE_FORMAT']:
+def check_reqs(parentdir):
+    """Check for assumed exports."""
+    
+    print(Bcolors.BOLD + '\nChecking for exported variables' + Bcolors.ENDC)
+    variables = ['SLURM_ACCOUNT', 'SBATCH_ACCOUNT', 'SALLOC_ACCOUNT', 'PYTHONPATH', 'SQUEUE_FORMAT']
+    
+    # check to see if bash_variables file has been created
+    if not op.exists(op.join(parentdir, 'bash_variables')):
+        print('\tCould not find bash_variables file in parentdir. Please create this file and add \
+in variables from README (eg SLURM_ACCOUNT, SQUEUE_FORMAT, etc). See example in $HOME/gatk-pipeline.')
+    else:
+        with open(op.join(parentdir, 'bash_variables')) as bv:
+            text = bv.read().split("\n")
+        needed = []
+        for var in variables:
+            found = False
+            for line in text:
+                if var in line:
+                    found = True
+                    break
+            if found is False:
+                needed.append(var)
+        if len(needed) > 0:
+            print(Bcolors.FAIL + '\tFAIL: not all bash variables were found in parentdir/bash_variables file.' + Bcolors.ENDC)
+            print(Bcolors.FAIL + '\tFAIL: the following variables must be present' + Bcolors.ENDC)
+            for var in needed:
+                print(Bcolors.FAIL + '\t%s' % var + Bcolors.ENDC)
+            print('exiting pipeline')
+    
+    # check to see if bash_variables file has been sourced
+    for var in variables:
         try:
             print('\t%s = %s' % (var, os.environ[var]))
         except KeyError:
-            print('\tcould not find %s in exported vars\n\texport this var in $HOME/.bashrc so it can be used \
-later in gatk_pipeline\n\texiting 00_start-gatk_pipeline.py' % var)
+            print(Bcolors.FAIL + '\tCould not find %s in exported vars\n\texport this var in parentdir/bash_variables \
+so it can be used later in gatk_pipeline, then source this file before restarting pipeline.' % var + Bcolors.ENDC)
+            print('\texiting 00_start-gatk_pipeline.py')
             exit()
-    # make sure an environment can be activated (activation assumed to be in $HOME/.bashrc)
+
+    # make sure an environment can be activated (activation assumed to be in parentdir/bash_variables)
     for exe in ['activate']:
         if distutils.spawn.find_executable(exe) is None:
-            print('\tcould not find %s in $PATH\nexiting 00_start-gatk_pipeline.py' % exe)
+            print(Bcolors.FAIL + '\tcould not find %s in $PATH\nexiting 00_start-gatk_pipeline.py' % exe
+                  + Bcolors.ENDC)
             if exe == 'activate':
-                print('\t\t(the lack of activate means that the python env is not correctly installed)')
+                print(Bcolors.FAIL + '\t\t(the lack of activate means that the python env is not correctly installed)'
+                     + Bcolors.ENDC)
             exit()
     # make sure pipeline can be accessed via $HOME/gatk_pipeline
     if not op.exists(op.join(os.environ['HOME'], 'gatk_pipeline')):
-        print('\tcould not find gatk_pipeline via $HOME/gatk_pipeline')
+        print('\tcould not find gatk_pipeline via $HOME/gatk_pipeline\n\texiting 00_start-gatk_pipeline.py')
         exit()
-    print('DONE!\n')
 
 
 def check_pyversion():
@@ -242,13 +279,18 @@ def get_pars():
                         dest="email",
                         help="the email address you would like to have notifications sent to")
     parser.add_argument("-n",
-                        default=argparse.SUPPRESS,
+                        default=None,
                         nargs='+',
                         required=False,
                         dest="email_options",
                         help='''the type(s) of email notifications you would like to receive from the pipeline.\
                         Requires --email-address. These options are used to fill out the #SBATCH flags.
 must be one (or multiple) of %s''' % [x for x in choices])
+    parser.add_argument("-maf",
+                        required=False,
+                        default='0.05',
+                        dest="maf",
+                        help='''At the end of the pipeline, VCF files will be filtered for MAF. If the pipeline is run on a single population/pool, the user can set MAF to 0.0 so as to filter variants based on global allele frequency across populations/pools at a later time.''')
     parser.add_argument('-h', '--help',
                         action='help',
                         default=argparse.SUPPRESS,
@@ -286,6 +328,8 @@ please check input\n' + Bcolors.ENDC)
                 'opts': args.email_options}
         pkldump(epkl, op.join(args.parentdir, 'email_opts.pkl'))
 
+    pkldump(args.maf, op.join(args.parentdir, 'maf.pkl'))
+
     return args
 
 
@@ -296,8 +340,11 @@ def main():
     # WARN if version = 3.6, FAIL if < 3.6
     check_pyversion()
 
-    # look for exported vars (should be in .bashrc)
-    check_reqs()
+    # look for exported vars (should be in /parentdir/bash_variables)
+    check_reqs(args.parentdir)
+    
+    # determine which slurm accounts to use
+    balance_queue.get_avail_accounts(args.parentdir, save=True)
 
     # read in the datatable
     data, f2pool, poolref = read_datatable(args.parentdir)
@@ -312,7 +359,7 @@ def main():
     get_datafiles(args.parentdir, f2pool, data)
 
     # create and sbatch sh files
-    create_sh(pooldirs, poolref)
+    create_sh(pooldirs, poolref, args.parentdir)
     
     print(Bcolors.BOLD +
           Bcolors.OKGREEN +

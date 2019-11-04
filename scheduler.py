@@ -3,9 +3,8 @@
 ###
 
 ### imports
-import sys
-import time
-import random
+import os, sys, time, random, subprocess, shutil
+from os import path as op
 from coadaptree import *
 from balance_queue import getsq
 ###
@@ -17,13 +16,15 @@ thisfile, pooldir = sys.argv
 ### reqs
 if pooldir.endswith("/"): #sometimes I run the scheduler from the command line, which appends / which screws up op.dirname()
     pooldir = pooldir[:-1]
-scheddir = op.join(op.dirname(pooldir), 'shfiles/gvcf_shfiles')
+parentdir = op.dirname(pooldir)
+scheddir = op.join(parentdir, 'shfiles/gvcf_shfiles')
 print("scheddir=", scheddir)
 
 scheduler = op.join(scheddir, 'scheduler.txt')
 os.chdir(scheddir)
 cluster = os.environ['CC_CLUSTER']  # which compute canada cluster is this job running on?
-qthresh = 1200 if cluster == 'cedar' else 900
+qthresh = 0 if cluster == 'cedar' else 0
+
 user = os.environ['USER']
 ###
 
@@ -101,9 +102,23 @@ def sbatchjobs(files):
                 os.unlink(f) # first try to remove the symlink from the scheddir
                 print('unlinked %s' % f)
             except:          # unless gvcf_helper has already done so (shouldnt be the case, but maybe with high qthresh)
-                print('unable to unlink symlink %f' % f)
+                print('unable to unlink symlink %s' % f)
                 continue
-            os.system('sbatch %s' % realp) # then sbatch the real sh file if & only if the symlink was successfully unlinked    
+            # then sbatch the real sh file if & only if the symlink was successfully unlinked
+            print('realp = ', realp)
+            print('shutil.which(sbatch) =', shutil.which('sbatch'))
+            try:
+                output = subprocess.check_output([shutil.which('sbatch'), realp]).decode('utf-8').replace("\n", "").split()[-1]
+            except subprocess.CalledProcessError as e:
+                print("couldn't sbatch. Here is the error:\n%s" % e)
+                os.symlink(realp, f)
+                print(f'relinked {op.basename(f)} to file: {realp}')
+                return
+            if not float(output) == int(output): # check to see if the return is a jobID
+                print('got an sbatch error: %s' % output)
+                return
+        time.sleep(5)
+
 
 
 def main(scheddir):
@@ -129,8 +144,8 @@ def main(scheddir):
             print('no files to sbatch')
     else:
         print('scheduler was not running, but no room in queue' )
-    pipedir = os.popen('echo $HOME/gatk_pipeline').read().replace("\n", "")
-    os.system('python %s scatter' % (op.join(pipedir, 'balance_queue.py')))
+    balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
+    subprocess.call([sys.executable, balance_queue, 'scatter', parentdir])
     delsched(scheduler)
 
 

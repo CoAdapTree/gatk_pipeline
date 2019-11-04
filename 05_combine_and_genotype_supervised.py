@@ -1,18 +1,21 @@
 """
 ### usage
 # python 03a_combine_and_genotype_by_pool.py parentdir
-###
-
-### fix
-# create reservation file to streamline pipeline
-# auto tune scheduler thresh to server
+#
+# if manually running from outside the pipeline, user must first:
+#    export SLURM_JOB_ID=1234  # this bashvariable is used by code
+# if run manually without exporting SLURM_JOB_ID, there will be 
+#    an error. Before rerunning 05.py, user must delete:
+#        /parentdir/shfiles/supervised/select_variants/scheduler.txt
 ###
 """
 
 ### imports
-import sys
+import sys, subprocess, os
+from os import path as op
 from collections import Counter
 from coadaptree import *
+from genotyping_scheduler import startscheduler, bigbrother, delsched
 ### 
 
 ### args
@@ -21,10 +24,19 @@ if parentdir.endswith("/"):
     parentdir = parentdir[:-1]
 ###
 
+# make a reservation file so other jobs don't call 05.py
+resfile = op.join(parentdir, 'shfiles/05_reservation.txt')
+if not op.exists(resfile):
+    startscheduler(resfile)
+else:
+    print('05.py was running')
+    bigbrother(resfile, DIR=None)
+
 ### reqs
 poolref = pklload(op.join(parentdir, 'poolref.pkl'))  #key=pool val=/path/to/ref.fa
 poolsamps = pklload(op.join(parentdir, 'poolsamps.pkl'))
 pools = uni(list(poolsamps.keys()))
+bash_variables = op.join(parentdir, 'bash_variables')
 ###
 
 # get a list of subdirectory pool dirs created earlier in pipeline
@@ -56,8 +68,9 @@ print('len(alreadycreated) = ', len(alreadycreated))
 newfiles = Counter()
 shfiles = []
 for pool,files in finished.items():
+    ref = poolref[pool]
     thresh = len(poolsamps[pool])
-    # get the files that need to be combined
+    # get the files that need to be combined across samples (by interval/scaff)
     groups = {}
     for f in files:
         scaff = op.basename(f).split("scatter")[1].split(".g.v")[0]
@@ -70,12 +83,13 @@ for pool,files in finished.items():
         gfile = combfile.replace("_combined.vcf.gz", "_genotyped.vcf.gz")
         snpfile = gfile.replace("_genotyped.vcf.gz", "_snps.vcf.gz")
         if snpfile in snpfiles:
-            # if the snpfile has already been made, move on to the next
+            # if the snpfile.tbi has already been made, move on to the next
             continue
         if len(sfiles) == thresh:
             # if the number of gvcf.tbi files created match the number of samps (expected number):
             if thresh > 1:
                 # if we need to combine across samps:
+                varcmd = '--variant ' + ' --variant '.join([x for x in sorted(sfiles)])
                 combinestep = f'''echo COMBINING GVCFs
 gatk CombineGVCFs -R {ref} {varcmd} -O {combfile}
 '''
@@ -111,9 +125,7 @@ gatk SelectVariants -R {ref} -V {gfile} --select-type-to-include SNP -O {snpfile
 
 export _JAVA_OPTIONS="-Xms256m -Xmx3g"
 
-source $HOME/.bashrc
-export PYTHONPATH="${{PYTHONPATH}}:$HOME/gatk_pipeline"
-export SQUEUE_FORMAT="%.8i %.8u %.12a %.68j %.3t %16S %.10L %.5D %.4C %.6b %.7m %N (%r)"
+source {bash_variables}
 
 cat $0
 # next line necessary for rescheduler
@@ -128,13 +140,18 @@ python $HOME/gatk_pipeline/genotyping_scheduler.py {parentdir}
 # genotype current file
 module load gatk/4.1.0.0
 {cmds}
+module unload gatk
 
 # keep running jobs until time runs out
+source {bash_variables}
 echo getting help from genotyping_helper
 # python $HOME/gatk_pipeline/genotyping_helper.py {parentdir} {snpfile}
 
 # in case there's time, schedule the next batch
 python $HOME/gatk_pipeline/05_combine_and_genotype_supervised.py {parentdir}
+
+# call last stage of pipeline
+python $HOME/gatk_pipeline/06_filter_concat_scaffolds.py {parentdir}
 
 '''
             with open(file, 'w') as o:
@@ -157,7 +174,8 @@ for sh in shfiles:
         print('could not create symlink')
         
 # # submit to scheduler, balance accounts
-os.system(f'python $HOME/gatk_pipeline/genotyping_scheduler.py {parentdir}')
+genotyping_scheduler = os.path.join(os.environ['HOME'], 'gatk_pipeline/genotyping_scheduler.py')
+subprocess.call([sys.executable, genotyping_scheduler, parentdir])
 
 print(shdir, len( fs(shdir) ) )
-
+delsched(resfile)
