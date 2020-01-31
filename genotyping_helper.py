@@ -13,7 +13,7 @@
 """
 
 ### imports
-import sys, shutil, signal, subprocess
+import sys, shutil, signal, subprocess, time
 from random import shuffle
 from coadaptree import *
 ###
@@ -31,13 +31,14 @@ subprocess.call([sys.executable, balance_queue, 'genotype', parentdir])
 # make sure the previous outfile was created
 def checkoutfile(outfile):
     if not op.exists(outfile):
-        os.system('echo previous outfile did not finish: %s' % outfile) 
+        os.system('echo previous outfile did not finish: %s' % outfile)
+        time.sleep(10)
         os.kill(os.getppid(), signal.SIGHUP)
 checkoutfile(outfile)
 
 
 # os.system('source $HOME/.bashrc')
-scheddir = op.join(parentdir, 'shfiles/supervised/select_variants_within_and_across')
+scheddir = op.join(parentdir, 'shfiles/supervised/select_variants')
 os.chdir(scheddir)
 workingdir = op.join(scheddir, 'workingdir')
 if not op.exists(workingdir):
