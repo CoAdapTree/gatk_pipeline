@@ -51,7 +51,8 @@ finished = {}
 for d in pooldirs:
     pool = op.basename(d)
     vcfdir = op.join(d, 'vcfs')
-    finished[pool] = [f.replace(".gz.tbi", ".gz") for f in fs(vcfdir) if f.endswith('.gz.tbi')]
+    if op.exists(vcfdir):
+        finished[pool] = [f.replace(".gz.tbi", ".gz") for f in fs(vcfdir) if f.endswith('.gz.tbi')]
 
 # create some dirs
 outdir = op.join(parentdir, 'snps')
