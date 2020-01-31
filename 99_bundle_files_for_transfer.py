@@ -1,4 +1,4 @@
-"""Create scp commands to copy completed files from current dir to remote server\
+"""Create rsync commands to copy completed files from current dir to remote server\
 (from perspective of remote server).
 
 # usage
@@ -9,6 +9,9 @@
 # that transfer is done in parallel on remote server
 # that compute canada servers are abbreviated in your remote:$HOME/.ssh/config (eg cedar, beluga, graham)
 # that any md5 files are for the current files in the directory that also haven't been modified since md5 creation
+
+# TODO
+# grab sh files from parentdir
 """
 
 import os, sys, subprocess, shutil
@@ -49,16 +52,16 @@ def get_cmds(srcfiles, md5files, remotedir, createmd5):
         if createmd5 is True:
             md5 = check_md5(src, md5files)
             md5dst = op.join(remotedir, op.basename(md5))
-            subcmds.append(f'scp {hostname}:{md5} {md5dst}')
+            subcmds.append(f'rsync -avz {hostname}:{md5} {md5dst}')
         dst = op.join(remotedir, op.basename(src))
-        subcmds.append(f'scp {hostname}:{src} {dst}')
+        subcmds.append(f'rsync -avz {hostname}:{src} {dst}')
     return subcmds
 
 
 pools = list(pklload(op.join(parentdir, 'poolref.pkl')).keys())
 pooldirs = [op.join(parentdir, p) for p in pools]
 newdirs = []  # keep track of directories to easily make on remote server
-cmds = []  # keep track of all scp commands
+cmds = []  # keep track of all rsync commands
 # get hostname (eg beluga, cedar, graham)
 hostname = os.environ['CC_CLUSTER']
 
@@ -74,11 +77,11 @@ pkls = [f for f in fs(parentdir) if f.endswith('.pkl')]
 for p in pooldirs:
     for pkl in pkls:
         pkldst = op.join(remote, f'{op.basename(p)}-gatk/{op.basename(pkl)}')
-        cmds.append(f"scp {hostname}:{pkl} {pkldst}")
+        cmds.append(f"rsync -avz {hostname}:{pkl} {pkldst}")
     newpkls = [f for f in fs(p) if f.endswith('.pkl')]
     for newpkl in newpkls:
         newdst = op.join(remote, f'{op.basename(p)}-gatk/{op.basename(newpkl)}')
-        cmds.append(f"scp {hostname}:{newpkl} {newdst}")
+        cmds.append(f"rsync -avz {hostname}:{newpkl} {newdst}")
 
 
 # get shfiles
@@ -92,7 +95,7 @@ for p in pooldirs:
         newdirs.append(remoted)
         md5files = [f for f in fs(d) if f.endswith('.md5')]
         srcfiles = [f for f in fs(d) if not f.endswith('.md5')]
-        cmds.extend(get_cmds(srcfiles, md5files, remoted, False))
+        cmds.extend(get_cmds(srcfiles, md5files, remoted, False))        
 
 
 # get bamfiles etc
@@ -117,8 +120,8 @@ else:
         remotep = op.join(remote, op.basename(p) + '-gatk')
         readinfodst = op.join(remotep, 'readinfo.txt')
         datatabledst = op.join(remotep, 'datatable.txt')
-        cmds.append(f"scp {hostname}:{readinfo} {readinfodst}")  # no need to add to newdirs
-        cmds.append(f"scp {hostname}:{datatable} {datatabledst}")  # no need to add to newdirs
+        cmds.append(f"rsync -avz {hostname}:{readinfo} {readinfodst}")  # no need to add to newdirs
+        cmds.append(f"rsync -avz {hostname}:{datatable} {datatabledst}")  # no need to add to newdirs
 
 
 # get combined gvcfs (necessary if we ever want to add samples)
@@ -167,16 +170,17 @@ for p in pooldirs:
 
 
 # write commands to file
-scpfile = op.join(parentdir, 'scp_cmds.txt')
-print(Bcolors.BOLD + f'\nwriting {len(cmds)} commands to: ' + Bcolors.ENDC + f'{scpfile}')
-with open(scpfile, 'w') as o:
+rsyncfile = op.join(parentdir, 'rsync_cmds.txt')
+print(Bcolors.BOLD + f'\nwriting {len(cmds)} commands to: ' + Bcolors.ENDC + f'{rsyncfile}')
+with open(rsyncfile, 'w') as o:
     jcmds = '\n'.join(cmds)
     o.write("%s" % jcmds)
 
 
 # print out necessary dirs on remote
-text = "\nCreate the following dirs on remote before executing scp commands:"
-text = text + "\n\t(or use find/replace in scp file above)"
+text = "\nCreate the following dirs on remote before executing rsync commands:"
+text = text + "\n\t(or use find/replace in rsync file above)"
 print(Bcolors.BOLD + text + Bcolors.ENDC)
 for d in sorted(newdirs):
     print('mkdir ', d)
+
