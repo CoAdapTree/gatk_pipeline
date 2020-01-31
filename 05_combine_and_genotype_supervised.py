@@ -154,6 +154,10 @@ python $HOME/gatk_pipeline/05_combine_and_genotype_supervised.py {parentdir}
 # call last stage of pipeline
 python $HOME/gatk_pipeline/06_filter_concat_scaffolds.py {parentdir}
 
+# balance queue
+python $HOME/gatk_pipeline/balance_queue.py genotype {parentdir}
+python $HOME/gatk_pipeline/balance_queue.py concat {parentdir}
+
 '''
             with open(file, 'w') as o:
                 o.write("%s" % text)

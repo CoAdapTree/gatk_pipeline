@@ -168,8 +168,3 @@ for sh in shfiles:
 print('here are the fcats:')
 for f in fcats:
     print(f)
-    
-# balance queue
-balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
-subprocess.call([sys.executable, balance_queue, 'genotype', parentdir])
-subprocess.call([sys.executable, balance_queue, 'concat', parentdir])
