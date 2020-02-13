@@ -117,7 +117,7 @@ gatk SelectVariants -R {ref} -V {gfile} --select-type-to-include SNP -O {snpfile
         if file not in alreadycreated:
             newfiles[pool] += 1
             text = f'''#!/bin/bash
-#SBATCH --time=11:59:00
+#SBATCH --time=3-00:00:00
 #SBATCH --ntasks=1
 #SBATCH --mem=4000M
 #SBATCH --cpus-per-task=1
@@ -165,8 +165,10 @@ python $HOME/gatk_pipeline/balance_queue.py concat {parentdir}
 
 # create scheddir queue
 scheddir = op.join(parentdir, 'shfiles/supervised/select_variants')
-if not op.exists(scheddir):
-    os.makedirs(scheddir)
+workingdir = op.join(scheddir, 'workingdir')
+for d in [scheddir, workingdir]:
+    if not op.exists(d):
+        os.makedirs(d)
     
 for pool in newfiles:
     print(pool,' created ', newfiles[pool],' files')
