@@ -202,8 +202,8 @@ if len(outs) > 0:
             timelimit  = False
             founderror = False
             cancelled = False
-            for line in o[-20:]: # look for an error message
-                if 'oom-kill' in line  or 'error' in line:
+            for line in o[::-1]: # look for an error message
+                if 'oom-kill' in line  or 'error' in line or 'OutOfMemoryError' in line:
                     if not 'no mem or time errors found in' in line:
                         os.system ('echo found an error')
                         founderror = True
