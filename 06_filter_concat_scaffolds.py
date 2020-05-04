@@ -123,9 +123,15 @@ module load gatk/4.1.0.0
 echo -e "\nFILTERING VARIANTS"
 gatk IndexFeatureFile -F {catout}
 gatk SelectVariants -R {ref} -V {catout} --select-type-to-include SNP -O {snpsout}
-gatk VariantFiltration -R {ref} -V {snpsout} -O {filtout} --filter-expression \
-"QD < 2.0 || FS > 60.0 || MQ < 40.0 || MQRankSum < -12.5" \
---filter-name "coadaptree_filter"
+gatk VariantFiltration -R {ref} -V {snpsout} -O {filtout} \
+--filter-name "QD filter" \
+--filter-expression "QD < 2.0" \
+--filter-name "FS filter" \
+--filter-expression "FS > 60.0" \
+--filter-name "MQ filter" \
+--filter-expression "MQ < 40.0" \
+--filter-name "MQRankSum filter" \
+--filter-expression "MQRankSum < -12.5"
 module unload gatk
 
 module load vcftools/0.1.14
@@ -168,8 +174,3 @@ for sh in shfiles:
 print('here are the fcats:')
 for f in fcats:
     print(f)
-    
-# balance queue
-balance_queue = op.join(os.environ['HOME'], 'gatk_pipeline/balance_queue.py')
-subprocess.call([sys.executable, balance_queue, 'genotype', parentdir])
-subprocess.call([sys.executable, balance_queue, 'concat', parentdir])

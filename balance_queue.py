@@ -300,7 +300,7 @@ def redistribute_jobs(accts, user_accts, balance):
             elif len(pids) == 1 and balance == 1 and len(accts.keys()) < len(user_accts):
                 # if numjobs and balance == 1 but not all accounts have low priority, give up the job
                 moveable.append(pids[0])
-                
+
     # shuffle list(takers) to avoid passing only to accounts that appear early in the list
     shuffle(takers)
     # redistribute jobs
@@ -322,7 +322,7 @@ def redistribute_jobs(accts, user_accts, balance):
                 moveable.remove(pid)
     for taker,count in taken.items():
         print('\t%s has taken %s jobs' % (taker, count))
-        
+
 
 def main(thisfile, keyword, parentdir):
     globals().update({'thisfile': thisfile, 'keyword': keyword})
@@ -330,7 +330,7 @@ def main(thisfile, keyword, parentdir):
     print(Bcolors.BOLD + '\nStarting balance_queue.py' + Bcolors.ENDC)
     # get accounts available for billing
     user_accts = get_avail_accounts(parentdir)
-    
+
     # if only one account, skip balancing
     if len(user_accts) == 1:
         print('\tthere is only one account (%s), no more accounts to balance queue.' % user_accts[0])

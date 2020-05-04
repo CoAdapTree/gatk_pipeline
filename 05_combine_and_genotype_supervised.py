@@ -51,7 +51,8 @@ finished = {}
 for d in pooldirs:
     pool = op.basename(d)
     vcfdir = op.join(d, 'vcfs')
-    finished[pool] = [f.replace(".gz.tbi", ".gz") for f in fs(vcfdir) if f.endswith('.gz.tbi')]
+    if op.exists(vcfdir):
+        finished[pool] = [f.replace(".gz.tbi", ".gz") for f in fs(vcfdir) if f.endswith('.gz.tbi')]
 
 # create some dirs
 outdir = op.join(parentdir, 'snps')
@@ -116,7 +117,7 @@ gatk SelectVariants -R {ref} -V {gfile} --select-type-to-include SNP -O {snpfile
         if file not in alreadycreated:
             newfiles[pool] += 1
             text = f'''#!/bin/bash
-#SBATCH --time=11:59:00
+#SBATCH --time=3-00:00:00
 #SBATCH --ntasks=1
 #SBATCH --mem=4000M
 #SBATCH --cpus-per-task=1
@@ -153,6 +154,10 @@ python $HOME/gatk_pipeline/05_combine_and_genotype_supervised.py {parentdir}
 # call last stage of pipeline
 python $HOME/gatk_pipeline/06_filter_concat_scaffolds.py {parentdir}
 
+# balance queue
+python $HOME/gatk_pipeline/balance_queue.py genotype {parentdir}
+python $HOME/gatk_pipeline/balance_queue.py concat {parentdir}
+
 '''
             with open(file, 'w') as o:
                 o.write("%s" % text)
@@ -160,8 +165,10 @@ python $HOME/gatk_pipeline/06_filter_concat_scaffolds.py {parentdir}
 
 # create scheddir queue
 scheddir = op.join(parentdir, 'shfiles/supervised/select_variants')
-if not op.exists(scheddir):
-    os.makedirs(scheddir)
+workingdir = op.join(scheddir, 'workingdir')
+for d in [scheddir, workingdir]:
+    if not op.exists(d):
+        os.makedirs(d)
     
 for pool in newfiles:
     print(pool,' created ', newfiles[pool],' files')

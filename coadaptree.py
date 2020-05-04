@@ -1,27 +1,14 @@
-"""
-### purpose
-# make sure these modules can be loaded before starting pipline
-# this is a list of modules across .py scripts
-# also a source for functions common across .py scripts
-###
+"""Common functions.
 
-### fix
-# export PYTHONPATH in .sh files to import these functions
+### purpose
+# custom modules used across .py scripts
 ###
 """
 
 import os
-# import sys # commented imports are not used in these funcs below, but are used in other python apps in the pipeline
-# import json
-# import math
-# import time
 import pickle
-# import random
-# import compiler
-# import numpy as np
-# import pandas as pd
+import sys
 from os import path as op
-# from collections import OrderedDict, Counter
 
 
 def fs(directory):
@@ -83,17 +70,20 @@ def createdirs(dirs):
         makedir(d)
 
 
-def askforinput():
-    print('\n')
+def askforinput(msg='Do you want to proceed?', tab='', newline='\n'):
+    "Ask for input; if msg is default and input is no, exit."
+    print(newline)
     while True:
-        inp = input(Bcolors.WARNING + "INPUT NEEDED: Do you want to proceed? (yes | no): " + Bcolors.ENDC).lower()
+        inp = input(Bcolors.WARNING + "\n%sINPUT NEEDED: %s \n%s(yes | no): "
+                    % (tab,msg,tab) + Bcolors.ENDC).lower()
         if inp in ['yes', 'no']:
-            if inp == 'no':
-                print('exiting 00_start-gatk_pipeline.py')
+            if inp == 'no' and msg=='Do you want to proceed?':
+                print('exiting %s' % sys.argv[0])
                 exit()
             break
         else:
             print(Bcolors.FAIL + "Please respond with 'yes' or 'no'" + Bcolors.ENDC)
+    return inp
 
 
 class Bcolors:
