@@ -20,6 +20,13 @@ from os import path as op
 from coadaptree import fs, pkldump, uni, luni, makedir, askforinput, Bcolors
 
 
+def get_rgid(r1):
+    """If RGID is blank, print out the output that the pipeline would otherwise use."""
+    p1 = Popen(['zcat',r1], stdout=PIPE)
+    p2 = Popen(['head', '-n1'], stdin=p1.stdout, stdout=PIPE)
+    return '_'.join(p2.communicate()[0].split()[0].decode('utf-8').split('\n')[0].split(":")[:4])
+
+
 def create_sh(pooldirs, poolref, parentdir):
     # create sh files
     print(Bcolors.BOLD + '\nwriting sh files' + Bcolors.ENDC)
