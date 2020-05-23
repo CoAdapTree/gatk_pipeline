@@ -17,6 +17,7 @@
 import os, sys, distutils.spawn, subprocess, shutil, argparse, pandas as pd
 import balance_queue
 from os import path as op
+from subprocess import Popen, PIPE
 from coadaptree import fs, pkldump, uni, luni, makedir, askforinput, Bcolors
 
 
