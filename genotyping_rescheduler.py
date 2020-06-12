@@ -264,6 +264,11 @@ if len(outs) > 0:
                                     break
                                 with open(trushfile,'w') as o:
                                     o.write("%s" % text)
+                                try:
+                                    # avoid incidents where previous texts are written to wrong files
+                                    del text
+                                except NameError as e:
+                                    pass
                                 # check to see which tbi files were made
                                 os.system ('echo checking tbis of original sh file %s' % trushfile)
                                 checktbis(trushfile)
@@ -313,6 +318,11 @@ if len(outs) > 0:
                                 os.system('echo increasing mem to 200G')
                             with open(trushfile,'w') as o:
                                 o.write("%s" % text)
+                            try:
+                                # avoid incidents where previous texts are written to wrong files
+                                del text
+                            except NameError as e:
+                                pass
                             # check to see which tbi files were made
                             os.system ('echo checking tbis of original sh file %s' % trushfile)
                             checktbis(trushfile)
