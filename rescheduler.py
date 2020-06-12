@@ -243,6 +243,11 @@ if len(outs) > 0:
                                     break
                                 with open(trushfile,'w') as O:
                                     O.write("%s" % timetext)
+                                try:
+                                    # avoid incidents where previous timetexts are written to wrong files
+                                    del timetext
+                                except NameError as e:
+                                    pass
                                 
                                 # add job back to the queue  
                                 linkname = op.join(scheddir, op.basename(trushfile))
@@ -291,6 +296,12 @@ if len(outs) > 0:
                                 os.system('echo increasing mem to 120G')
                             with open(trushfile, 'w') as O:
                                 O.write("%s" % text)
+                            
+                            try:
+                                # avoid incidents where previous texts are written to wrong files
+                                del text
+                            except NameError as e:
+                                pass
                             
                             # add job back to the queue  
                             linkname = op.join(scheddir, op.basename(trushfile))
